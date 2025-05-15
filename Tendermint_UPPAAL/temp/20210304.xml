@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>const int N = 4;
+const int F = 0;
+const int Block_size = 3;
+const int Max_round = 5;
+typedef int[0, N-F-1] n_id;
+typedef int[0, Block_size-1] h_id;
+
+//Tags
+const int Tag_propose = 0;
+const int Tag_prevote = 1;
+const int Tag_precommit = 2;
+const int Tag_commit = 3;
+
+//types
+const int Type_committed = 1;
+const int Type_none = -1;
+
+//Block struct
+typedef struct {
+    int Data;
+    int Type;
+}Block;
+
+//BlockChain
+typedef struct {
+    int Height;
+    Block Block_list[Block_size]; 
+}Blockchain;
+
+//Node struct
+typedef struct{
+    int Voting_power;
+    int Priority;
+}Validator_set;
+
+//Node message
+typedef struct{
+    int Propose[Max_round];
+    int Prevote[Max_round][N];
+    int Precommit[Max_round][N];
+}NodeMsg;
+
+//Node
+typedef struct{
+    int Id;
+    int start;
+    int Round;
+    int LLR;
+    int PoLCR;
+    Block Locked_block;
+    Block Propose_block;
+    Validator_set Validator;
+    NodeMsg Msg;
+    Blockchain BlockChain;
+}CSSnode;
+
+//initialize
+int Proposal_node = 0;
+int Data_list[N] = {1, 2, 3, 4};
+const Block Nil_block = {0, -1};
+
+CSSnode Node[N] = {
+    {0, 1, 0, -1, -1, {0, -1}, {0, -1}, {12, 0}, {{-1, -1, -1, -1, -1}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}}, {-1, {{-1, -1}, {-1, -1}, {-1, -1}}}},
+    {1, 1, 0, -1, -1, {0, -1}, {0, -1}, {9, 0}, {{-1, -1, -1, -1, -1}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}}, {-1, {{-1, -1}, {-1, -1}, {-1, -1}}}},
+    {2, 1, 0, -1, -1, {0, -1}, {0, -1}, {10, 0}, {{-1, -1, -1, -1, -1}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}}, {-1, {{-1, -1}, {-1, -1}, {-1, -1}}}},
+    {3, 1, 0, -1, -1, {0, -1}, {0, -1}, {11, 0}, {{-1, -1, -1, -1, -1}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}}, {-1, {{-1, -1}, {-1, -1}, {-1, -1}}}}
+};
+
+
+</declaration>
+	<template>
+		<name>Tendermint</name>
+		<location id="id0" x="0" y="0">
+		</location>
+		<init ref="id0"/>
+	</template>
+	<template>
+		<name>Process_node</name>
+		<parameter>const n_id nodeID</parameter>
+		<declaration>clock timeout_propose;
+clock timeout_prevote;
+clock timeout_precommit;
+
+void proposer_selection()
+{
+    int sum_p = 0;
+    int total_sum = 0;
+    int max_p = 0;
+    int min_p = 0;
+
+    for (i: int[0, N-1]){
+        total_sum += Node[i].Validator.Voting_power;
+    }
+
+    //caculate max min
+    for (i: int[0, N-1]){
+        sum_p += Node[i].Validator.Priority;
+        if (max_p &lt; Node[i].Validator.Priority){
+            max_p = Node[i].Validator.Priority;
+        }
+        if (min_p &gt; Node[i].Validator.Priority){
+            min_p = Node[i].Validator.Priority;
+        }
+    }
+    
+    //update scale
+    if ((max_p - min_p) &gt; 2 * total_sum){
+        int diff = max_p - min_p;
+        int double_sum = 2 * total_sum;
+        int p_scale = diff / double_sum;
+        for (i: int[0, N-1]){
+            Node[i].Validator.Priority = Node[i].Validator.Priority/p_scale;
+        }
+    }
+
+    //set center to zero
+    sum_p = 0;
+    for (i: int[0, N-1]){
+        sum_p += Node[i].Validator.Priority;
+    }
+    for (i: int[0, N-1]){
+        Node[i].Validator.Priority -= sum_p/N;
+    }
+
+    //caculate proposal node
+    for (i: int[0, N-1]){
+        Node[i].Validator.Priority += Node[i].Validator.Voting_power;
+    }
+
+    sum_p = 0;
+    for (i: int[0, N-1]){
+        sum_p += Node[i].Validator.Priority;
+    }
+
+    max_p = Node[nodeID].Validator.Priority;
+    Proposal_node = nodeID;
+    for (i: int[0, N-1]){
+        if (max_p &lt; Node[i].Validator.Priority){
+            max_p = Node[i].Validator.Priority;
+            Proposal_node = i;
+        }
+    }
+    Node[Proposal_node].Validator.Priority -= sum_p;
+    return;
+}
+
+void msg_broadcast(int tag, Block block)
+{
+    int msg_data = block.Data;
+    if (tag == Tag_propose){
+        for (i: int[0, N-1]){
+            Node[i].Msg.Propose[Node[nodeID].Round] = msg_data; 
+        }
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            Node[i].Msg.Prevote[Node[nodeID].Round][nodeID] = msg_data; 
+        }
+    }
+
+    if (tag == Tag_precommit){
+        for (i: int[0, N-1]){
+            Node[i].Msg.Precommit[Node[nodeID].Round][nodeID] = msg_data; 
+        }
+    }
+    return;
+}
+
+Block is_23_Maj_block(int tag, int msg_round)
+{
+    Block block = {-1, -1};
+    int pivot_data = 0;
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+    
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Node[i].Validator.Voting_power;
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            pivot_data = Node[nodeID].Msg.Prevote[msg_round][i];
+            for(j: int[0, N-1]){
+                if (pivot_data == Node[nodeID].Msg.Prevote[msg_round][j]){
+                    sum_voting_power = sum_voting_power + Node[j].Validator.Voting_power;
+                }
+            }
+            if (sum_voting_power &gt; 0.667 * total_voting_power){
+                Block msg_block = {pivot_data, -1};
+                return msg_block;
+            }
+            sum_voting_power = 0;
+        }
+    }
+
+    if (tag == Tag_precommit){
+        for (i: int[0, N-1]){
+            pivot_data = Node[nodeID].Msg.Precommit[msg_round][i];
+            for(j: int[0, N-1]){
+                if (pivot_data == Node[nodeID].Msg.Precommit[msg_round][j]){
+                    sum_voting_power = sum_voting_power + Node[j].Validator.Voting_power;
+                }
+            }
+            if (sum_voting_power &gt; 0.667 * total_voting_power){
+                Block msg_block = {pivot_data, -1};
+                return msg_block;
+            }
+            sum_voting_power = 0;
+        }
+    }
+    return block;
+}
+
+bool is_23_Any(int tag, int msg_round)
+{
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+    
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Node[i].Validator.Voting_power;
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            if (Node[nodeID].Msg.Prevote[msg_round][i] &gt; -1){
+                sum_voting_power = sum_voting_power + Node[i].Validator.Voting_power;
+            }
+        }
+        if (sum_voting_power &gt; 0.667 * total_voting_power){
+            return true;
+        }
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            if (Node[nodeID].Msg.Precommit[msg_round][i] &gt; -1){
+                sum_voting_power = sum_voting_power + Node[i].Validator.Voting_power;
+            }
+        }
+        if (sum_voting_power &gt; 0.667 * total_voting_power){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool is_23_Maj(int tag, int msg_round)
+{
+    Block block = is_23_Maj_block(tag, msg_round);
+    if (block.Data &gt; 0) return true;
+    else return false;
+}
+
+bool is_23_Maj_nil(int tag, int msg_round)
+{
+    Block block = is_23_Maj_block(tag, msg_round);
+    if (block.Data == 0) return true;
+    else return false;
+}
+
+//propose step
+void propose_step_proposal()
+{
+    Block createNewBlock = {Data_list[nodeID], Type_none};
+    if (Node[nodeID].LLR != -1){
+        Node[nodeID].PoLCR = Node[nodeID].LLR;
+        Node[nodeID].Propose_block = Node[nodeID].Locked_block;
+    }
+    else {
+        Node[nodeID].Propose_block = createNewBlock;
+    }
+    msg_broadcast(Tag_propose, Node[nodeID].Propose_block);
+    return;
+}
+
+void propose_step_not_proposal()
+{
+    Block received_block = {Node[nodeID].Msg.Propose[Node[nodeID].Round], Type_none};
+    Node[nodeID].Propose_block = received_block;
+    return;
+}
+
+void propose_step_timeout()
+{
+    Block n_block = {0, -1};
+    Node[nodeID].Propose_block = n_block;
+    return;
+}
+
+//prevote step
+void check_unlock()
+{
+    Block createNilBlock = {0, -1};
+    if (Node[nodeID].PoLCR != -1 &amp;&amp; Node[nodeID].LLR != -1 &amp;&amp; Node[nodeID].PoLCR &lt; Node[nodeID].LLR &amp;&amp; Node[nodeID].LLR &amp;&amp; Node[nodeID].Round){
+        if (is_23_Maj(Tag_prevote, Node[nodeID].PoLCR) &amp;&amp; is_23_Maj_block(Tag_prevote, Node[nodeID].PoLCR).Data != Node[nodeID].Locked_block.Data){
+            Node[nodeID].LLR = -1;
+            Node[nodeID].Locked_block = createNilBlock;
+        }
+    }
+    return;
+}
+
+bool is_valid()
+{
+    int propose_data = Node[nodeID].Propose_block.Data;
+    for (i: int[0, N-1]){
+        if (propose_data == Data_list[i]) return true;
+    }
+    return false;
+}
+
+bool common_exit_condition()
+{
+    if (is_23_Maj(Tag_prevote, Node[nodeID].Round) || is_23_Maj_nil(Tag_prevote, Node[nodeID].Round)) return true;
+    else if (is_23_Any(Tag_prevote, Node[nodeID].Round)) return true;
+    else return false;
+}
+
+//precommit step
+void precommit_particular_block()
+{
+    Block maj_block = is_23_Maj_block(Tag_prevote, Node[nodeID].Round);
+    Node[nodeID].Locked_block = maj_block;
+    Node[nodeID].LLR = Node[nodeID].Round;
+    msg_broadcast(Tag_precommit, maj_block);
+    return;
+}
+
+void precommit_nil_block()
+{
+    Block createNilBlock = {0, -1};
+    Node[nodeID].Locked_block = createNilBlock;
+    Node[nodeID].LLR = -1;
+    msg_broadcast(Tag_precommit, createNilBlock);
+    return;
+}
+
+void precommit_none()
+{
+    Block createNilBlock = {0, -1};
+    msg_broadcast(Tag_precommit, createNilBlock);
+    return;
+}
+
+//commit step
+void commit_step()
+{
+    Block init_block = {0, -1};
+    Block commit_block = is_23_Maj_block(Tag_precommit, Node[nodeID].Round);
+    commit_block.Type = Type_committed;
+    Node[nodeID].BlockChain.Height = Node[nodeID].BlockChain.Height + 1;
+    Node[nodeID].BlockChain.Block_list[Node[nodeID].BlockChain.Height] = commit_block;
+
+    Node[nodeID].Round = 0;
+    Node[nodeID].PoLCR = -1;
+    Node[nodeID].Locked_block = init_block;
+    Node[nodeID].Propose_block = init_block;
+    for (i: int[0, Max_round-1]){
+        Node[nodeID].Msg.Propose[i] = -1;    
+        for (j: int[0, N-1]){
+            Node[nodeID].Msg.Prevote[i][j] = -1;
+            Node[nodeID].Msg.Precommit[i][j] = -1;
+        }
+    }
+    proposer_selection();
+    Node[nodeID].start = 0;
+    return;
+}
+
+bool round_condition()
+{
+    if (Node[nodeID].Round &lt; Max_round-1){
+        if (!is_23_Maj(Tag_precommit, Node[nodeID].Round) &amp;&amp; is_23_Any(Tag_precommit, Node[nodeID].Round)){
+            return true;
+        }
+        if (is_23_Maj_nil(Tag_precommit, Node[nodeID].Round)){
+            return true;
+        }
+    }
+    return false;
+}
+
+void new_round()
+{
+    Node[nodeID].Round = Node[nodeID].Round + 1;  
+    Node[nodeID].PoLCR = -1;
+    proposer_selection();
+    return;
+}
+
+bool wait_condition()
+{
+    int pivot_height = Node[nodeID].BlockChain.Height;
+    for(i: int[0, N-1]){
+        if (Node[i].BlockChain.Height != pivot_height) return false;
+    }
+    return true;
+}
+
+bool start_condition()
+{
+    for(i: int[0, N-1]){
+        if (Node[i].start == 0) return false;
+    }
+    return true;
+}</declaration>
+		<location id="id1" x="-663" y="0">
+			<name x="-680" y="-85">start</name>
+		</location>
+		<location id="id2" x="-51" y="0">
+			<name x="-76" y="-85">prevote</name>
+		</location>
+		<location id="id3" x="306" y="0">
+			<name x="246" y="-93">wait_precommit</name>
+		</location>
+		<location id="id4" x="493" y="0">
+			<name x="459" y="-93">precommit</name>
+		</location>
+		<location id="id5" x="816" y="0">
+			<name x="773" y="-93">wait_commit</name>
+		</location>
+		<location id="id6" x="986" y="0">
+			<name x="935" y="-93">check_commit</name>
+		</location>
+		<location id="id7" x="-561" y="0">
+			<name x="-586" y="-85">propose</name>
+		</location>
+		<location id="id8" x="-238" y="0">
+			<name x="-280" y="-85">wait_prevote</name>
+		</location>
+		<location id="id9" x="-663" y="238">
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-739" y="136">wait_condition() &amp;&amp; Node[nodeID].BlockChain.Height &lt; Block_size-1</label>
+			<label kind="assignment" x="-612" y="153">Node[nodeID].start = 1</label>
+			<nail x="-748" y="238"/>
+			<nail x="-748" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id9"/>
+			<label kind="guard" x="76" y="212">is_23_Maj(Tag_precommit, Node[nodeID].Round)</label>
+			<label kind="assignment" x="187" y="238">commit_step()</label>
+			<nail x="986" y="238"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-493" y="-153">nodeID == Proposal_node</label>
+			<label kind="assignment" x="-493" y="-136">propose_step_proposal()</label>
+			<nail x="-408" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id2"/>
+			<label kind="assignment" x="-263" y="17">check_unlock(), timeout_prevote = 0</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-637" y="-51">nodeID != Proposal_node &amp;&amp; Node[nodeID].Msg.Propose[Node[nodeID].Round] != -1</label>
+			<label kind="assignment" x="-493" y="-34">propose_step_not_proposal()</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-663" y="0">start_condition()</label>
+			<label kind="assignment" x="-671" y="17">timeout_propose = 0</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id1"/>
+			<label kind="guard" x="51" y="-289">round_condition()</label>
+			<label kind="assignment" x="68" y="-272">new_round()</label>
+			<nail x="986" y="-289"/>
+			<nail x="-748" y="-297"/>
+			<nail x="-748" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="348" y="85">!is_23_Maj(Tag_prevote, Node[nodeID].Round) &amp;&amp; !is_23_Maj_nil(Tag_prevote, Node[nodeID].Round)</label>
+			<label kind="assignment" x="595" y="102">precommit_none()</label>
+			<nail x="654" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="510" y="-153">is_23_Maj(Tag_prevote, Node[nodeID].Round)</label>
+			<label kind="assignment" x="569" y="-136">precommit_particular_block()</label>
+			<nail x="654" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="93" y="85">!is_valid()</label>
+			<label kind="assignment" x="0" y="102">msg_broadcast(Tag_prevote, Nil_block)</label>
+			<nail x="119" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="0" y="-153">Node[nodeID].Locked_block.Data != 0</label>
+			<label kind="assignment" x="-59" y="-136">msg_broadcast(Tag_prevote, Node[nodeID].Locked_block)</label>
+			<nail x="119" y="-102"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="348" y="-68">!is_23_Maj(Tag_prevote, Node[nodeID].Round) &amp;&amp; is_23_Maj_nil(Tag_prevote, Node[nodeID].Round)</label>
+			<label kind="assignment" x="586" y="-51">precommit_nil_block()</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="314" y="17">common_exit_condition()</label>
+			<label kind="assignment" x="323" y="34">timeout_precommit = 0</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-42" y="-51">Node[nodeID].Locked_block.Data == 0 &amp;&amp; is_valid()</label>
+			<label kind="assignment" x="-68" y="-34">msg_broadcast(Tag_prevote, Node[nodeID].Propose_block)</label>
+		</transition>
+	</template>
+	<template>
+		<name>Faulty_node</name>
+		<location id="id10" x="0" y="0">
+		</location>
+		<init ref="id10"/>
+	</template>
+	<system>system Tendermint, Process_node, Faulty_node;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; forall (i : n_id) forall (j : int[0, Block_size-1]) node[i].blockchain.block_list[j].data == 0</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>A[] forall (i : n_id) forall (j : int[0, Block_size-1])  node[i].blockchain.block_list[j].data &gt;= 0</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>A[] forall (j : int[0, Block_size-1]) node[0].blockchain.block_list[j].data == node[1].blockchain.block_list[j].data &amp;&amp; node[1].blockchain.block_list[j].data == node[2].blockchain.block_list[j].data &amp;&amp; node[2].blockchain.block_list[j].data == node[3].blockchain.block_list[j].data</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; forall (j : int[0, Block_size-1]) node[0].blockchain.block_list[j].data == 0 &amp;&amp; node[1].blockchain.block_list[j].data &gt; 0</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

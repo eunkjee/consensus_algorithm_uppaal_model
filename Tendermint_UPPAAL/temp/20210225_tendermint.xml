@@ -1,0 +1,634 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>const int N = 4;
+const int F = 0;
+typedef int[0, N-F-1] n_id;
+
+const int Block_size = 3;
+const int Max_round = 5;
+typedef int[0, Block_size-1] h_id;
+
+const int Tag_prevote = 0;
+const int Tag_precommit = 1;
+
+broadcast chan ProposeStart;
+broadcast chan VoteStart;
+broadcast chan CheckBlock;
+broadcast chan UpRound;
+broadcast chan CommitSuccess;
+broadcast chan Commitfail;
+
+//BlockChain
+typedef struct {
+    int Height;
+    int Block_list[Block_size]; 
+}Blockchain;
+
+//Node struct
+typedef struct{
+    int Voting_power;
+    int Priority;
+}Validator_set;
+
+//Node message
+typedef struct{
+    int Propose[Max_round];
+    int Prevote[Max_round][N];
+    int Precommit[Max_round][N];
+}CSSmsg;
+
+//Node
+typedef struct{
+    int Round;
+    int LLR;
+    int PoLCR;
+    int Locked_block;
+    int Propose_block;
+    Blockchain BlockChain;
+}CSSnode;
+
+//initialize
+int Proposal_node = 0;
+int Data_List[N] = {1, 2, 3, 4};
+
+Validator_set Validator[N] = {
+    {8, 0}, {10, 0}, {9, 0}, {11, 0}
+};
+
+CSSmsg Msg[N]= {
+    {{-1, -1, -1, -1, -1}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}},
+    {{-1, -1, -1, -1, -1}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}},
+    {{-1, -1, -1, -1, -1}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}},
+    {{-1, -1, -1, -1, -1}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}, {{-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}, {-1, -1, -1, -1}}}
+};
+
+CSSnode Node[N] = {
+    {0, -1, -1, 0, -1, {0, {-1, -1, -1}}},
+    {0, -1, -1, 0, -1, {0, {-1, -1, -1}}},
+    {0, -1, -1, 0, -1, {0, {-1, -1, -1}}},    
+    {0, -1, -1, 0, -1, {0, {-1, -1, -1}}}
+};</declaration>
+	<template>
+		<name>Node_obv</name>
+		<parameter>const h_id nodeH</parameter>
+		<declaration>bool is23_Any(int tag, int nodeID, int msg_round)
+{
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+    
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Validator[i].Voting_power;
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            if (Msg[nodeID].Prevote[msg_round][i] &gt; -1){
+                sum_voting_power = sum_voting_power + Validator[i].Voting_power;
+            }
+        }
+        if (sum_voting_power &gt; 2/3 * total_voting_power){
+            return true;
+        }
+    }
+
+    if (tag == Tag_precommit){
+        for (i: int[0, N-1]){
+            if (Msg[nodeID].Precommit[msg_round][i] &gt; -1){
+                sum_voting_power = sum_voting_power + Validator[i].Voting_power;
+            }
+        }
+        if (sum_voting_power &gt; 2/3 * total_voting_power){
+            return true;
+        }
+    }
+    return false;
+}</declaration>
+		<location id="id0" x="-773" y="-25">
+		</location>
+		<location id="id1" x="-773" y="127">
+			<name x="-816" y="153">ProposeStep</name>
+		</location>
+		<location id="id2" x="-535" y="127">
+			<name x="-561" y="152">VoteStep</name>
+		</location>
+		<location id="id3" x="-195" y="-161">
+			<name x="-229" y="-144">NewRound</name>
+		</location>
+		<location id="id4" x="-195" y="127">
+			<name x="-237" y="144">CommitBlock</name>
+		</location>
+		<location id="id5" x="-195" y="-25">
+			<name x="-229" y="0">CommitFail</name>
+		</location>
+		<location id="id6" x="-535" y="-25">
+			<name x="-578" y="0">CheckCommit</name>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-374" y="-119">UpRound?</label>
+			<nail x="-535" y="-102"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-501" y="85">forall (i: n_id) Node[i].BlockChain.Block_list[nodeH] != -1</label>
+			<nail x="-442" y="127"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-374" y="-17">Commitfail?</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-578" y="34">forall (i: n_id) is23_Any(Tag_precommit, i, Node[i].Round)</label>
+			<label kind="synchronisation" x="-578" y="51">CheckBlock!</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<nail x="-773" y="-161"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-799" y="178">forall (i: n_id) Node[i].Propose_block != -1</label>
+			<label kind="synchronisation" x="-799" y="195">VoteStart!</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-918" y="25">forall (i: n_id) Node[i].BlockChain.Height == nodeH</label>
+			<label kind="synchronisation" x="-918" y="42">ProposeStart!</label>
+		</transition>
+	</template>
+	<template>
+		<name>Faulty_node</name>
+		<location id="id7" x="0" y="0">
+		</location>
+		<init ref="id7"/>
+	</template>
+	<template>
+		<name>BlockChain</name>
+		<parameter>const n_id nodeID</parameter>
+		<declaration>bool is23_Any(int tag, int msg_round)
+{
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+    
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Validator[i].Voting_power;
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            if (Msg[nodeID].Prevote[msg_round][i] &gt; -1){
+                sum_voting_power = sum_voting_power + Validator[i].Voting_power;
+            }
+        }
+        if (sum_voting_power &gt; 2/3 * total_voting_power){
+            return true;
+        }
+    }
+
+    if (tag == Tag_precommit){
+        for (i: int[0, N-1]){
+            if (Msg[nodeID].Precommit[msg_round][i] &gt; -1){
+                sum_voting_power = sum_voting_power + Validator[i].Voting_power;
+            }
+        }
+        if (sum_voting_power &gt; 2/3 * total_voting_power){
+            return true;
+        }
+    }
+    return false;
+}
+
+int is23_Block(int tag, int msg_round)
+{
+    int pivot_data = 0;
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+    
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Validator[i].Voting_power;
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            pivot_data = Msg[nodeID].Prevote[msg_round][i];
+            for(j: int[0, N-1]){
+                if (pivot_data == Msg[nodeID].Prevote[msg_round][j]){
+                    sum_voting_power = sum_voting_power + Validator[j].Voting_power;
+                }
+            }
+            if (sum_voting_power &gt; 2/3 * total_voting_power){
+                return pivot_data;
+            }
+            sum_voting_power = 0;
+        }
+    }
+
+    if (tag == Tag_precommit){
+        for (i: int[0, N-1]){
+            pivot_data = Msg[nodeID].Precommit[msg_round][i];
+            for(j: int[0, N-1]){
+                if (pivot_data == Msg[nodeID].Precommit[msg_round][j]){
+                    sum_voting_power = sum_voting_power + Validator[j].Voting_power;
+                }
+            }
+            if (sum_voting_power &gt; 2/3 * total_voting_power){
+                return pivot_data;
+            }
+            sum_voting_power = 0;
+        }
+    }
+    return -1;
+}
+
+bool is23_Maj(int tag, int msg_round)
+{
+    if (is23_Block(tag, msg_round) &gt; 0) return true;
+    else return false;
+}
+
+void check_unlock()
+{
+    if (Node[nodeID].PoLCR != -1 &amp;&amp; Node[nodeID].LLR != -1 &amp;&amp; Node[nodeID].PoLCR &lt; Node[nodeID].LLR &amp;&amp; Node[nodeID].LLR &amp;&amp; Node[nodeID].Round){
+        if (is23_Maj(Tag_prevote, Node[nodeID].PoLCR) &amp;&amp; is23_Block(Tag_prevote, Node[nodeID].PoLCR) != Node[nodeID].Locked_block){
+            Node[nodeID].LLR = -1;
+            Node[nodeID].Locked_block = 0;
+        }
+    }
+    return;
+}
+
+void init_set()
+{
+    Node[nodeID].Round = 0;
+    Node[nodeID].LLR = -1;
+    Node[nodeID].PoLCR = -1;
+    Node[nodeID].Locked_block = 0;
+    Node[nodeID].Propose_block = -1;
+    for (i: int[0, Max_round-1]){
+        Msg[nodeID].Propose[i] = -1;    
+        for (j: int[0, N-1]){
+            Msg[nodeID].Prevote[i][j] = -1;
+            Msg[nodeID].Precommit[i][j] = -1;
+        }
+    }
+}
+
+void new_round()
+{
+    Node[nodeID].Round++;
+    Node[nodeID].PoLCR = -1;
+}
+
+void new_height()
+{
+    Node[nodeID].BlockChain.Block_list[Node[nodeID].BlockChain.Height] = is23_Block(Tag_precommit, Node[nodeID].Round);
+    Node[nodeID].BlockChain.Height++;
+    init_set();
+}</declaration>
+		<location id="id8" x="-51" y="-59">
+		</location>
+		<location id="id9" x="161" y="51">
+			<name x="119" y="68">CommitBlock</name>
+		</location>
+		<location id="id10" x="161" y="-178">
+			<name x="127" y="-212">newRound</name>
+		</location>
+		<location id="id11" x="-237" y="-59">
+		</location>
+		<location id="id12" x="425" y="-59">
+			<name x="451" y="-68">DeadLock</name>
+		</location>
+		<init ref="id11"/>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-34" y="-34">Node[nodeID].BlockChain.Height &gt;= Block_size-1 || Node[nodeID].Round &gt;= Max_round-1</label>
+			<label kind="synchronisation" x="-34" y="-51">Commitfail!</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id11"/>
+			<nail x="-238" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<nail x="-238" y="-178"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-195" y="-85">CheckBlock?</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-34" y="-136">(!is23_Maj(Tag_precommit, Node[nodeID].Round) &amp;&amp; is23_Any(Tag_precommit, Node[nodeID].Round))
+|| is23_Block(Tag_precommit, Node[nodeID].Round) == 0</label>
+			<label kind="synchronisation" x="-34" y="-153">UpRound!</label>
+			<label kind="assignment" x="-34" y="-102">new_round()</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-34" y="0">is23_Maj(Tag_precommit, Node[nodeID].Round)</label>
+			<label kind="assignment" x="-34" y="17">new_height()</label>
+		</transition>
+	</template>
+	<template>
+		<name>Process_propose</name>
+		<parameter>const n_id nodeID</parameter>
+		<declaration>void propose_step()
+{
+    if (Node[nodeID].LLR != -1){
+        Node[nodeID].PoLCR = Node[nodeID].LLR;
+        Node[nodeID].Propose_block = Node[nodeID].Locked_block;
+    }
+    else {
+        Node[nodeID].Propose_block = Data_List[nodeID];
+    }
+
+    for (i: int[0, N-1]){
+        Msg[i].Propose[Node[nodeID].Round] = Node[nodeID].Propose_block;
+    }
+    return;
+}</declaration>
+		<location id="id13" x="-220" y="0">
+		</location>
+		<location id="id14" x="170" y="-110">
+			<name x="144" y="-144">Proposer</name>
+		</location>
+		<location id="id15" x="-51" y="0">
+			<name x="-76" y="17">Propose</name>
+		</location>
+		<location id="id16" x="170" y="110">
+			<name x="127" y="127">NotProposer</name>
+		</location>
+		<init ref="id13"/>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id13"/>
+			<nail x="-220" y="110"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id13"/>
+			<nail x="-220" y="-111"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="0" y="-76">nodeID == Proposal_node</label>
+			<label kind="assignment" x="0" y="-59">propose_step()</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id16"/>
+			<label kind="guard" x="0" y="25">nodeID != Proposal_node
+&amp;&amp; Msg[nodeID].Propose[Node[nodeID].Round] != -1</label>
+			<label kind="assignment" x="0" y="59">Node[nodeID].Propose_block = Msg[nodeID].Propose[Node[nodeID].Round]</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-187" y="-25">ProposeStart?</label>
+		</transition>
+	</template>
+	<template>
+		<name>Process_vote</name>
+		<parameter>const n_id nodeID</parameter>
+		<declaration>void msg_Broadcast(int tag, int msg_data)
+{
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            Msg[i].Prevote[Node[nodeID].Round][nodeID] = msg_data; 
+        }
+    }
+
+    if (tag == Tag_precommit){
+        for (i: int[0, N-1]){
+            Msg[i].Precommit[Node[nodeID].Round][nodeID] = msg_data; 
+        }
+    }
+    return;
+}
+
+bool is23_Any(int tag, int msg_round)
+{
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+    
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Validator[i].Voting_power;
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            if (Msg[nodeID].Prevote[msg_round][i] &gt; -1){
+                sum_voting_power = sum_voting_power + Validator[i].Voting_power;
+            }
+        }
+        if (sum_voting_power &gt; 2/3 * total_voting_power){
+            return true;
+        }
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            if (Msg[nodeID].Precommit[msg_round][i] &gt; -1){
+                sum_voting_power = sum_voting_power + Validator[i].Voting_power;
+            }
+        }
+        if (sum_voting_power &gt; 2/3 * total_voting_power){
+            return true;
+        }
+    }
+    return false;
+}
+
+int is23_Block(int tag, int msg_round)
+{
+    int pivot_data = 0;
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+    
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Validator[i].Voting_power;
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            pivot_data = Msg[nodeID].Prevote[msg_round][i];
+            for(j: int[0, N-1]){
+                if (pivot_data == Msg[nodeID].Prevote[msg_round][j]){
+                    sum_voting_power = sum_voting_power + Validator[j].Voting_power;
+                }
+            }
+            if (sum_voting_power &gt; 2/3 * total_voting_power){
+                return pivot_data;
+            }
+            sum_voting_power = 0;
+        }
+    }
+
+    if (tag == Tag_prevote){
+        for (i: int[0, N-1]){
+            pivot_data = Msg[nodeID].Precommit[msg_round][i];
+            for(j: int[0, N-1]){
+                if (pivot_data == Msg[nodeID].Precommit[msg_round][j]){
+                    sum_voting_power = sum_voting_power + Validator[j].Voting_power;
+                }
+            }
+            if (sum_voting_power &gt; 2/3 * total_voting_power){
+                return pivot_data;
+            }
+            sum_voting_power = 0;
+        }
+    }
+    return -1;
+}
+
+bool is23_Maj(int tag, int msg_round)
+{
+    if (is23_Block(tag, msg_round) &gt; 0) return true;
+    else return false;
+}
+
+void check_unlock()
+{
+    if (Node[nodeID].PoLCR != -1 &amp;&amp; Node[nodeID].LLR != -1 &amp;&amp; Node[nodeID].PoLCR &lt; Node[nodeID].LLR &amp;&amp; Node[nodeID].LLR &amp;&amp; Node[nodeID].Round){
+        if (is23_Maj(Tag_prevote, Node[nodeID].PoLCR) &amp;&amp; is23_Block(Tag_prevote, Node[nodeID].PoLCR) != Node[nodeID].Locked_block){
+            Node[nodeID].LLR = -1;
+            Node[nodeID].Locked_block = 0;
+        }
+    }
+    return;
+}</declaration>
+		<location id="id17" x="-611" y="-17">
+		</location>
+		<location id="id18" x="-467" y="-17">
+			<name x="-493" y="0">Prevote</name>
+		</location>
+		<location id="id19" x="-187" y="-17">
+			<name x="-238" y="0">WaitPrecommit</name>
+		</location>
+		<location id="id20" x="-26" y="-17">
+			<name x="-60" y="0">Precommit</name>
+		</location>
+		<location id="id21" x="263" y="-17">
+		</location>
+		<init ref="id17"/>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id17"/>
+			<nail x="263" y="-272"/>
+			<nail x="-612" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-17" y="110">!is23_Maj(Tag_prevote, Node[nodeID].Round)
+&amp;&amp; is23_Block(Tag_prevote, Node[nodeID].Round) != 0</label>
+			<label kind="assignment" x="-17" y="144">msg_Broadcast(Tag_precommit, 0)</label>
+			<nail x="-26" y="102"/>
+			<nail x="263" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-17" y="-212">is23_Maj(Tag_prevote, Node[nodeID].Round)</label>
+			<label kind="assignment" x="-17" y="-195">Node[nodeID].Locked_block = is23_Block(Tag_prevote, Node[nodeID].Round),
+Node[nodeID].LLR = Node[nodeID].Round,
+msg_Broadcast(Tag_precommit, Node[nodeID].Locked_block)</label>
+			<nail x="-26" y="-136"/>
+			<nail x="212" y="-136"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-17" y="-119">!is23_Maj(Tag_prevote, Node[nodeID].Round)
+&amp;&amp; is23_Block(Tag_prevote, Node[nodeID].Round) == 0</label>
+			<label kind="assignment" x="-17" y="-85">Node[nodeID].Locked_block = 0,
+Node[nodeID].LLR = -1,
+msg_Broadcast(Tag_precommit, Node[nodeID].Locked_block)</label>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-178" y="25">is23_Maj(Tag_prevote, Node[nodeID].Round)
+|| is23_Block(Tag_prevote, Node[nodeID].Round)
+|| is23_Any(Tag_prevote, Node[nodeID].Round)</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="guard" x="-459" y="59">Node[nodeID].Locked_block == 0
+&amp;&amp; Node[nodeID].Propose_block &lt;= 0</label>
+			<label kind="assignment" x="-459" y="102">msg_Broadcast(Tag_prevote, 0)</label>
+			<nail x="-467" y="101"/>
+			<nail x="-187" y="101"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="guard" x="-467" y="-178">Node[nodeID].Locked_block != 0</label>
+			<label kind="assignment" x="-467" y="-161">msg_Broadcast(Tag_prevote, Node[nodeID].Locked_block)</label>
+			<nail x="-467" y="-136"/>
+			<nail x="-187" y="-136"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="guard" x="-467" y="-93">Node[nodeID].Locked_block == 0
+&amp;&amp; Node[nodeID].Propose_block &gt; 0</label>
+			<label kind="assignment" x="-467" y="-59">msg_Broadcast(Tag_prevote, Node[nodeID].Propose_block)</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="-578" y="-42">VoteStart?</label>
+			<label kind="assignment" x="-593" y="-17">check_unlock()</label>
+		</transition>
+	</template>
+	<system>system Node_obv, Faulty_node, BlockChain, Process_propose, Process_vote;</system>
+	<queries>
+		<query>
+			<formula>A[] forall(i : h_id) not Node_obv(i).CommitFail</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

@@ -1,0 +1,736 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>const int N = 6;
+const int F = 0;
+typedef int[0, N-F-1] n_id;
+
+const int SLOTMAX = 1;
+typedef int[0,SLOTMAX-1] s_id;
+
+const int VOTINGPOWER = 1;
+const int V = 1;
+
+const int INFINITY = 10;
+const int MSGGAP = 5;
+const int PRIGAP = 0;
+const int TIMERGAP = 15;
+
+// states
+const int stepPropose = 0;
+const int stepPrevote = 1;
+const int stepPrecommit = 2;
+
+const int timeoutPropose = 10;
+const int timeoutProposeDelta = 1;
+const int timeoutPrevote = 10;
+const int timeoutPrevoteDelta = 1;
+const int timeoutPrecommit = 10;
+const int timeoutPrecommitDelta = 1;
+
+broadcast chan slotDone;
+broadcast chan slotSuccess;
+broadcast chan slotFail;
+broadcast chan slotUnknown;
+broadcast chan slotDeadlock;
+broadcast chan slotStarted[SLOTMAX+1];
+
+int[0, SLOTMAX] slotCur = 0;
+
+int[-PRIGAP, PRIGAP] cnt_priority[N] =
+    {0, 0, 0, 0, 0, 0};
+
+int[0, INFINITY] cnt_round[N] = 
+    {0, 0, 0, 0, 0, 0};
+
+int[-1, INFINITY] cnt_locked_round[N] = 
+    {-1, -1, -1, -1, -1, -1};
+
+int[-1, INFINITY] cnt_POLC_round[N] = 
+    {-1, -1, -1, -1, -1, -1};
+
+bool cnt_propose_value[N] =
+    {false, false, false, false, false, false};
+
+bool cnt_locked_value[N] = 
+    {false, false, false, false, false, false};
+
+bool cnt_POLC_value[N] = 
+    {false, false, false, false, false, false};
+
+bool commit_Done[N][SLOTMAX] = {
+    {false},
+    {false},
+    {false},
+    {false},
+    {false},
+    {false}
+};
+
+bool commit_check[N][SLOTMAX] = {
+    {false},
+    {false},
+    {false},
+    {false},
+    {false},
+    {false}
+};
+
+typedef struct{
+    int[0, INFINITY] counter;
+    bool propose[V];
+    bool prevote[V];
+    bool precommit[V];
+}MSGQueue;
+MSGQueue MSG[N] = { 
+    {0, {false}, {false}, {false}},
+    {0, {false}, {false}, {false}},
+    {0, {false}, {false}, {false}},
+    {0, {false}, {false}, {false}},
+    {0, {false}, {false}, {false}},
+    {0, {false}, {false}, {false}}
+};
+
+typedef struct{
+    int[0, TIMERGAP] timer;
+    int[stepPropose, stepPrecommit] step;
+}TDMNODE;
+TDMNODE NODE[N] = {
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0}
+};
+
+int[0, N-1] proposer_node = 0;
+
+// timer
+typedef int[0,N-F-1] t_id;
+broadcast chan tickManagerStart;
+broadcast chan tickManagerStop;
+broadcast chan tickStart;
+broadcast chan tickStop;
+chan tickAdvance[N-F];
+chan tickAdvanceDone[N-F];
+
+bool tickReady[N] =
+    {true, true, true, true, true, true};
+
+
+// global function
+int total_votingpower (){
+    int totalVP = 0;
+    for (i: int[0, N-1]){
+        totalVP += VOTINGPOWER;
+    }
+
+    return totalVP;
+}
+
+void proposer_selction (){
+    /*
+    int sum_p = 0;
+    int sum_total = 0;
+    int max_p = 0;
+    int min_p = 0;
+
+    sum_total = total_votingpower ();
+    for (i: int[0, N-1]){
+        sum_p += cnt_priority[i];
+        if (max_p &lt; cnt_priority[i]){
+            max_p = cnt_priority[i];
+        }
+
+        if (min_p &gt; cnt_priority[i]){
+            min_p = cnt_priority[i];
+        }
+    }
+    if ((max_p - min_p) &gt; 2 * sum_total){
+        int diff = max_p - min_p;
+        int double_sum = 2 * sum_total;
+        int p_scale = diff / double_sum;
+
+        for (i: int[0, N-1]){
+            cnt_priority[i] = cnt_priority[i]/p_scale;
+        }
+    }
+
+    sum_p = 0;
+    sum_p = total_votingpower ();
+
+    for (i: int[0, N-1]){
+        cnt_priority[i] -= sum_p / N;
+    }
+    for (i: int[0, N-1]){
+        cnt_priority[i] += VOTINGPOWER;
+    }
+
+    sum_p = 0;
+    sum_p = total_votingpower ();
+
+    for (i: int[0, N-1]){
+        if (max_p &lt; cnt_priority[i]){
+            max_p = cnt_priority[i];
+            proposer_node = i;
+        }
+    }
+    cnt_priority[proposer_node] -= sum_p;
+    return;
+    */
+
+    proposer_node = (proposer_node + 1) % N;
+    return;
+}
+
+
+</declaration>
+	<template>
+		<name>NodeSlot</name>
+		<parameter>const s_id slotID</parameter>
+		<declaration>bool checkCommit (){
+    for (i: int[0, N-1]){
+        if (!commit_Done[i][slotCur]){
+            return false;
+        }
+    }
+    return true;
+}
+
+bool isFail () {
+    for (i: int[0, N-1]){
+        if (!commit_Done[i][slotCur]){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isUnknown () {
+    for (i: int[0, N-1]){
+        if (cnt_round[i] &gt;= INFINITY){
+            return true;
+        }
+    }
+    return false;
+}</declaration>
+		<location id="id0" x="-68" y="-8">
+		</location>
+		<location id="id1" x="238" y="-119">
+			<name x="212" y="-93">SlotUnknown</name>
+		</location>
+		<location id="id2" x="238" y="-8">
+			<name x="212" y="17">SlotSuccess</name>
+		</location>
+		<location id="id3" x="238" y="110">
+			<name x="212" y="127">SlotFail</name>
+		</location>
+		<location id="id4" x="68" y="-8">
+		</location>
+		<location id="id5" x="-195" y="-8">
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="93" y="119">isFail ()</label>
+			<label kind="synchronisation" x="93" y="136">slotFail!</label>
+			<label kind="assignment" x="93" y="153">slotCur++</label>
+			<nail x="67" y="110"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="guard" x="93" y="0">checkCommit ()</label>
+			<label kind="synchronisation" x="93" y="17">slotSuccess!</label>
+			<label kind="assignment" x="93" y="34">slotCur++</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-51" y="0">checkCommit ()</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="93" y="-161">isUnknown ()</label>
+			<label kind="synchronisation" x="93" y="-144">slotUnknown!</label>
+			<nail x="-68" y="-119"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-204" y="8">slotID == slotCur</label>
+			<label kind="synchronisation" x="-204" y="25">slotStarted[slotCur]!</label>
+		</transition>
+	</template>
+	<template>
+		<name>NodeNormal</name>
+		<parameter>const n_id nodeID</parameter>
+		<declaration>void resetState (){
+    proposer_selction ();
+
+    NODE[nodeID].timer = 0;
+    NODE[nodeID].step = 0;
+    cnt_round[nodeID] = 0;
+    cnt_locked_round[nodeID] = -1;
+    cnt_POLC_round[nodeID] = -1;
+    cnt_propose_value[nodeID] = false;
+    cnt_locked_value[nodeID] = false;
+    cnt_POLC_value[nodeID] = false;
+
+    for (i: int[0, N-1]){
+        MSG[i].counter = 0;
+        MSG[i].propose[0] = false;
+        MSG[i].prevote[0] = false;
+        MSG[i].precommit[0] = false;
+    }
+    return;
+}
+
+void broadcastMsg (int step){
+    MSG[nodeID].counter += 1;
+    
+    if (MSG[nodeID].counter &gt; MSGGAP){
+        MSG[nodeID].counter = 0;
+        MSG[nodeID].propose[0] = false;
+        MSG[nodeID].prevote[0] = false;
+        MSG[nodeID].precommit[0] = false;
+    }
+
+    if (step == stepPropose){
+        MSG[nodeID].propose[0] = true;
+    }
+
+    else if (step == stepPrevote){
+        MSG[nodeID].prevote[0] = true;
+    }
+
+    else if (step == stepPrecommit){
+        MSG[nodeID].precommit[0] = true;
+    }
+    return;
+}
+
+bool checkCommit (){
+    return commit_check[nodeID][slotCur];
+}
+
+void doCommit (){
+    commit_Done[nodeID][slotCur] = true;
+    return;
+}
+    
+void newStep (){
+    NODE[nodeID].step += 1;
+    if (NODE[nodeID].step &gt; 2) {
+        NODE[nodeID].step = 0;
+    }
+    NODE[nodeID].timer = 0;
+    return;
+}
+
+void enterRound (){
+    cnt_round[nodeID] += 1;
+    return;
+}
+
+bool isProposal (){
+    if (nodeID == proposer_node){
+        return true;
+    }
+    return false;
+}
+
+bool handleTimeout (int timeoutState, int Round){
+    if (timeoutState == stepPropose){
+        if (NODE[nodeID].timer &gt; timeoutPropose + Round * timeoutProposeDelta) {
+            return true;
+        }
+    }
+
+    else if (timeoutState == stepPrevote){
+        if (NODE[nodeID].timer &gt; timeoutPrevote + Round * timeoutPrevoteDelta) {\
+            return true;
+        }
+    }
+
+    else if (timeoutState == stepPrecommit){
+        if (NODE[nodeID].timer &gt; timeoutPrecommit + Round * timeoutPrecommitDelta) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool is23Maj (int step, int Round){
+    int vp_total = total_votingpower ();
+    int vp_sum = 0;
+
+    if (step == stepPropose){
+        for (i: int[0, N-1]){
+            if (MSG[i].propose[0] &amp;&amp; cnt_round[nodeID] == cnt_round[i]){
+                return true;
+            }
+        }
+    }
+
+    else if (step == stepPrevote){
+        for (i: int[0, N-1]){
+            if (MSG[i].prevote[0] &amp;&amp; cnt_round[nodeID] == cnt_round[i]){
+                vp_sum += VOTINGPOWER;
+            }
+        }
+        if (100 * vp_sum &gt; 66 * vp_total){
+            return true;
+        }
+    }
+
+    else if (step == stepPrecommit){
+        for (i: int[0, N-1]){
+            if (MSG[i].precommit[0] &amp;&amp; cnt_round[nodeID] == cnt_round[i]){
+                vp_sum += VOTINGPOWER;
+            }
+        }
+        if (100 * vp_sum &gt; 66 * vp_total){
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool enterPropose (){
+    if (isProposal ()){
+        broadcastMsg (NODE[nodeID].step);
+        cnt_propose_value[nodeID] = true;
+    }
+    else if (is23Maj (NODE[nodeID].step, cnt_round[nodeID])){
+        cnt_propose_value[nodeID] = true;
+    }
+
+    if (cnt_propose_value[nodeID] || handleTimeout (NODE[nodeID].step, cnt_round[nodeID])){
+        return true;
+    }
+
+    return false;
+}
+
+bool enterPrevote (){
+    if (cnt_locked_round[nodeID] != -1 
+        &amp;&amp; cnt_POLC_value[nodeID] 
+        &amp;&amp; cnt_locked_round[nodeID] &lt; cnt_POLC_round[nodeID]
+        &amp;&amp; cnt_POLC_round[nodeID] &lt; cnt_round[nodeID]){
+        cnt_locked_round[nodeID] = -1;
+        cnt_locked_value[nodeID] = false;
+    }
+
+    if (cnt_locked_value[nodeID]){
+        broadcastMsg (NODE[nodeID].step);
+    }
+    else if (!cnt_locked_value[nodeID] &amp;&amp; cnt_propose_value[nodeID]){
+        broadcastMsg (NODE[nodeID].step);
+    }
+    
+    if (is23Maj (NODE[nodeID].step, cnt_round[nodeID]) || handleTimeout (NODE[nodeID].step, cnt_round[nodeID])){
+        cnt_POLC_round[nodeID] = cnt_round[nodeID];
+        cnt_POLC_value[nodeID] = true;
+        return true;
+    }
+
+    return false;
+}
+
+bool enterPrecommit (){
+    if (is23Maj (NODE[nodeID].step-1, cnt_round[nodeID])){
+        cnt_locked_value[nodeID] = true;
+        cnt_locked_round[nodeID] = cnt_round[nodeID];
+        broadcastMsg (NODE[nodeID].step);
+    }
+
+    if (is23Maj (NODE[nodeID].step, cnt_round[nodeID])){
+        commit_check[nodeID][slotCur] = true;
+        NODE[nodeID].step = 0;
+        return true;
+    }
+    else if (handleTimeout (NODE[nodeID].step, cnt_round[nodeID])){
+        NODE[nodeID].step = 0;
+        enterRound ();
+        proposer_selction ();
+        MSG[nodeID].counter = 0;
+        MSG[nodeID].propose[0] = false;
+        MSG[nodeID].prevote[0] = false;
+        MSG[nodeID].precommit[0] = false;
+        return true;
+    }
+
+    return false;
+}
+
+void recieveRoutine (){
+    if (NODE[nodeID].timer &gt;= TIMERGAP){
+        NODE[nodeID].timer = 0;
+    }
+
+    NODE[nodeID].timer += 1;
+    
+    if (cnt_round[nodeID] &gt;= INFINITY){
+        return;
+    }
+    
+
+    if (NODE[nodeID].step == stepPropose){
+        if (enterPropose ()){
+            newStep ();
+        }
+    }
+
+    else if (NODE[nodeID].step == stepPrevote){
+        if (enterPrevote ()){
+            newStep ();
+        }
+    }
+
+    else if (NODE[nodeID].step == stepPrecommit){
+        if (enterPrecommit ()){
+            newStep ();
+        }
+    }
+
+    return;
+}</declaration>
+		<location id="id6" x="24" y="175">
+		</location>
+		<location id="id7" x="245" y="175">
+		</location>
+		<location id="id8" x="474" y="175">
+		</location>
+		<location id="id9" x="246" y="25">
+			<committed/>
+		</location>
+		<init ref="id6"/>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="306" y="34">tickAdvanceDone[nodeID]!</label>
+			<nail x="331" y="93"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id9"/>
+			<label kind="guard" x="42" y="17">!checkCommit ()</label>
+			<label kind="synchronisation" x="42" y="34">tickAdvance[nodeID]?</label>
+			<label kind="assignment" x="42" y="51">recieveRoutine()</label>
+			<nail x="161" y="93"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="321" y="302">slotUnknown?</label>
+			<label kind="assignment" x="321" y="319">resetState ()</label>
+			<nail x="474" y="344"/>
+			<nail x="24" y="344"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="321" y="225">slotFail?</label>
+			<label kind="assignment" x="321" y="242">resetState ()</label>
+			<nail x="474" y="268"/>
+			<nail x="24" y="268"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="92" y="302">slotUnknown?</label>
+			<label kind="assignment" x="92" y="319">resetState ()</label>
+			<nail x="245" y="344"/>
+			<nail x="24" y="344"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="92" y="225">slotFail?</label>
+			<label kind="assignment" x="92" y="242">resetState ()</label>
+			<nail x="245" y="268"/>
+			<nail x="24" y="268"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="212" y="382">slotSuccess?</label>
+			<label kind="assignment" x="212" y="399">resetState ()</label>
+			<nail x="474" y="422"/>
+			<nail x="24" y="421"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="323" y="136">checkCommit ()</label>
+			<label kind="assignment" x="323" y="153">doCommit ()</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="68" y="153">slotStarted[slotCur]?</label>
+		</transition>
+	</template>
+	<template>
+		<name>NodeFaulty</name>
+		<location id="id10" x="0" y="0">
+		</location>
+		<init ref="id10"/>
+	</template>
+	<template>
+		<name>TickManager</name>
+		<declaration>bool isDone() {
+    for (t : t_id) {
+        if (tickReady[t] == true) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void resetTick() {
+    for (t : t_id) {
+        tickReady[t] = true;
+    }
+}
+</declaration>
+		<location id="id11" x="-382" y="-8">
+		</location>
+		<location id="id12" x="-144" y="-8">
+			<committed/>
+		</location>
+		<location id="id13" x="85" y="-8">
+		</location>
+		<location id="id14" x="-144" y="-153">
+			<committed/>
+		</location>
+		<init ref="id11"/>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-127" y="-280">slotUnknown?</label>
+			<nail x="85" y="-289"/>
+			<nail x="-144" y="-289"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-127" y="-212">slotFail?</label>
+			<nail x="85" y="-221"/>
+			<nail x="-144" y="-221"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-365" y="-144">tickStop!</label>
+			<label kind="assignment" x="-365" y="-127">resetTick()</label>
+			<nail x="-382" y="-153"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-127" y="-144">slotSuccess?</label>
+			<nail x="85" y="-153"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id13"/>
+			<label kind="guard" x="170" y="-34">isDone()</label>
+			<label kind="assignment" x="170" y="0">resetTick()</label>
+			<nail x="161" y="-68"/>
+			<nail x="161" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-126" y="-25">tickStart!</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-364" y="-25">slotStarted[slotCur]?</label>
+		</transition>
+	</template>
+	<template>
+		<name>TickWorker</name>
+		<parameter>const t_id tickID</parameter>
+		<location id="id15" x="-306" y="0">
+		</location>
+		<location id="id16" x="-85" y="0">
+		</location>
+		<location id="id17" x="102" y="0">
+		</location>
+		<init ref="id15"/>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-51" y="68">tickAdvanceDone[tickID]?</label>
+			<label kind="assignment" x="-51" y="85">tickReady[tickID] = false</label>
+			<nail x="8" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-51" y="-102">tickReady[tickID] == true</label>
+			<label kind="synchronisation" x="-51" y="-85">tickAdvance[tickID]!</label>
+			<nail x="8" y="-59"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-289" y="-102">tickStop?</label>
+			<nail x="-85" y="-110"/>
+			<nail x="-306" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-289" y="-25">tickStart?</label>
+		</transition>
+	</template>
+	<system>system NodeSlot, NodeNormal, NodeFaulty, TickManager, TickWorker;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; forall (i : s_id) NodeSlot(i).SlotSuccess</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; forall (i : s_id) NodeSlot(i).SlotFail</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; forall (i : s_id) NodeSlot(i).SlotUnknown</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>A[] forall (i : s_id) not NodeSlot(i).SlotFail</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>A[] forall (i : s_id) not NodeSlot(i).SlotUnknown</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>A[] forall (i : s_id) not (NodeSlot(i).SlotFail || NodeSlot(i).SlotUnknown)</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

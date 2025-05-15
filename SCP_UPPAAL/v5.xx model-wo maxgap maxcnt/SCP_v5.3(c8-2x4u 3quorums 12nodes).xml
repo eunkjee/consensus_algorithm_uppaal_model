@@ -1,0 +1,2121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// c8- 2X4u 3quorums 12nodes
+
+const int N = 12; // total number of nodes
+const int F = 0; // total number of faulty nodes
+//const int F = 1;
+//const int F = 3;
+//const int F = 4;
+const int THR = 67; // quorum threshold number
+const int V = 4; // maximum number of values in nomination state
+const int VBITS = 15; // 2^V-1
+const int NULL = -1;
+const int INFINITY = 100;
+const int SLOTMAX = 5;
+
+int[NULL,N] inboundNodes[N][N] =
+    {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}};
+int[NULL,N] outboundNodes[N][N] =
+    {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}};
+
+typedef struct {
+    int[NULL,N] threshold;
+    int[NULL,N] validators[N];
+} SCPQuorumSlice;
+SCPQuorumSlice qs[N] =
+    {{-1, {0,1,2,3,4,5,6,7,NULL,NULL,NULL,NULL}},
+     {-1, {1,0,2,3,4,5,6,7,NULL,NULL,NULL,NULL}},
+     {-1, {2,0,1,3,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}},
+     {-1, {3,0,1,2,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}},
+
+     {-1, {4,5,6,7,8,9,10,11,NULL,NULL,NULL,NULL}},
+     {-1, {5,4,6,7,8,9,10,11,NULL,NULL,NULL,NULL}},
+     {-1, {6,4,5,7,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}},
+     {-1, {7,4,5,6,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}},
+
+     {-1, {8,9,10,11,0,1,2,3,NULL,NULL,NULL,NULL}},
+     {-1, {9,8,10,11,0,1,2,3,NULL,NULL,NULL,NULL}},
+     {-1, {10,8,9,11,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}},
+     {-1, {11,8,9,10,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}}};
+
+// states
+const int SCPPrepare = 0;
+const int SCPCommit = 1;
+const int SCPExternalize = 2;
+const int SCPNomination = 3;
+
+typedef struct {
+    int[NULL,VBITS] voted[V];
+    int[NULL,VBITS] accepted[V];
+} SCPNominationState;
+SCPNominationState nominationStates[N] =
+    {{{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}},
+     {{NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL}}};
+
+bool nominationMessagesFromTo[N][N]; // if [i][j] is true, it means node i sent a mesage to node j.
+
+typedef struct {
+    int[NULL,INFINITY] counter;
+    int[NULL,VBITS] value;
+} SCPBallot;
+
+typedef struct {
+    int[0,3] curState;
+    SCPBallot b;
+    SCPBallot p;
+    SCPBallot pp;
+    SCPBallot h;
+    SCPBallot c;
+} SCPBallotState;
+SCPBallotState ballotStates[N];
+
+bool ballotMessagesFromTo[N][N]; // if [i][j] is true, it means node i sent a mesage to node j.
+
+chan externalized[N];
+
+// FOCUS
+// total node number for each slot
+int[0,N] totalNodes[5] = {12, 12, 12, 12, 12};
+//int totalNodes[5] = {12, 11, 10, 12, 12};
+//int totalNodes[5] = {12, 10, 11, 12, 12};
+//int totalNodes[5] = {12, 9, 11, 12, 12}; 
+
+int[0,N] curNodes;  // total number of the current participating nodes
+int[0,SLOTMAX] slotCur = 0;
+int[NULL,VBITS] higherlayerInput[N][V] =
+    {{8, NULL, NULL, NULL},
+     {1, NULL, NULL, NULL},
+     {8, NULL, NULL, NULL},
+     {1, NULL, NULL, NULL},
+     {4, NULL, NULL, NULL},
+     {2, 8, NULL, NULL},
+     {4, NULL, NULL, NULL},
+     {4, 8, NULL, NULL},
+     {2, NULL, NULL, NULL},
+     {2, NULL, NULL, NULL},
+     {1, NULL, NULL, NULL},
+     {8, NULL, NULL, NULL}};
+int[NULL,VBITS] nominatedValues[N][V] =
+    {{NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL}};
+bool nominationEnds[N] = {false, false, false, false, false, false, false, false, false, false, false, false};
+int[NULL,VBITS] outputValues[N][SLOTMAX] =
+    {{NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL},
+     {NULL, NULL, NULL, NULL, NULL}};
+int[NULL,VBITS] externalizedInputs[V] = {NULL, NULL, NULL, NULL};</declaration>
+	<template>
+		<name>NodeFaulty</name>
+		<location id="id0" x="0" y="0">
+		</location>
+		<init ref="id0"/>
+	</template>
+	<template>
+		<name>NodeSlot</name>
+		<declaration>bool hasOutputGenerated() {
+    int[0,N] i;
+    int[0,N] cnt = 0;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if (outputValues[i][slotCur] != NULL) {
+            cnt++;
+        }
+    }
+    return (cnt == curNodes - F);
+}
+
+void clearNomination(){
+    int[0,N] i;
+    int[0,V] j;
+
+    for(i=0; i&lt;N; i++){
+        for (j=0; j&lt;V; j++) {
+            nominatedValues[i][j] = NULL;
+            nominationStates[i].voted[j] = NULL;
+            nominationStates[i].accepted[j] = NULL;
+        }
+    }
+
+}</declaration>
+		<location id="id1" x="170" y="-170">
+			<name x="187" y="-187">SlotEnded</name>
+		</location>
+		<location id="id2" x="170" y="0">
+			<name x="187" y="-8">SlotStarted</name>
+		</location>
+		<location id="id3" x="0" y="0">
+			<name x="-17" y="-42">Start</name>
+		</location>
+		<init ref="id3"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="assignment" x="8" y="-170">slotCur++</label>
+			<nail x="-8" y="-170"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="guard" x="170" y="-119">curNodes&gt;0 &amp;&amp;
+hasOutputGenerated()</label>
+			<label kind="assignment" x="170" y="-85">clearNomination()</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="51" y="0">slotCur == 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="9" y="9">NodeNomination</name>
+		<parameter>int nodeID</parameter>
+		<declaration>clock n_clockRound;
+int[0,N] n_totalValidators = 0;
+int[0,100] n_round = 0;
+bool n_hasCandidate = false;
+int[NULL,VBITS] n_cntValues[VBITS];
+
+bool isParticipant(int nID){
+    if(nID &lt; curNodes){
+        return true;
+    }
+    return false;
+}
+
+void initNominationState() {
+    int[0,N] i;
+    int[0,V] j, m;
+    int[0,VBITS] k;
+
+    curNodes = totalNodes[slotCur]; // set the number of current nodes
+    n_totalValidators = 0;
+    n_round = 0;
+    n_hasCandidate = false;
+    nominationEnds[nodeID] = false;
+    for (i=0; i&lt;curNodes; i++){
+        nominationMessagesFromTo[nodeID][i] = false;
+        nominationMessagesFromTo[i][nodeID] = false;
+        if (qs[nodeID].validators[i] != NULL &amp;&amp; isParticipant(qs[nodeID].validators[i])) {
+            n_totalValidators++;
+        }
+    }
+    qs[nodeID].threshold = n_totalValidators*THR/100 + 1;
+    for (j=0; j&lt;V; j++) {
+        nominatedValues[nodeID][j] = NULL;
+        nominationStates[nodeID].voted[j] = NULL;
+        nominationStates[nodeID].accepted[j] = NULL;
+    }
+    for (k=0; k&lt;VBITS; k++) {
+        n_cntValues[k] = 0;
+    }
+    // remove the externalized inputs for not participated nodes
+    for(j=0; j&lt;V; j++){
+        for(m=0; m&lt;V; m++){
+            if(higherlayerInput[nodeID][j] != NULL 
+                &amp;&amp; higherlayerInput[nodeID][j] == externalizedInputs[m])
+                higherlayerInput[nodeID][j] = NULL;
+        }
+        
+    }
+}
+
+int getHighestPriorityNode(int round) {
+    return round % n_totalValidators;
+}
+
+bool isContained(int[NULL,VBITS] &amp;arr[V], int value) {
+    int[0,V] i;
+
+    for (i=0; i&lt;V; i++) {
+        if (arr[i] == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void addArr(int[NULL,VBITS] &amp;arr[V], int value) {
+    int[0,V] i;
+
+    for (i=0; i&lt;V; i++) {
+        if (arr[i] == NULL) {
+            arr[i] = value;
+            return;
+        }
+    }
+}
+
+void removeArr(int[NULL,VBITS] &amp;arr[V], int value) {
+    int[0,V] i;
+    int[NULL,V] removed = NULL, max = NULL;
+
+    for (i=0; i&lt;V; i++) {
+        if (arr[i] != NULL) {
+            max = i;
+            if (arr[i] == value) {
+                removed = i;
+            }
+        }
+    }
+
+    if (removed != NULL) {
+        arr[removed] = arr[max];
+        arr[max] = NULL;
+    }
+}
+
+bool getHigherlayerInput() {
+    int[0,V] i;
+    bool hasNewVote = false;
+    int[NULL,VBITS] value = NULL;
+
+    for (i=0; i&lt;V; i++) {
+        value = higherlayerInput[nodeID][i];
+        if (value != NULL
+            &amp;&amp; !isContained(nominationStates[nodeID].accepted, value)
+            &amp;&amp; !isContained(nominationStates[nodeID].voted, value)) {
+            addArr(nominationStates[nodeID].voted, value);
+            hasNewVote = true;
+        }
+    }
+
+    return hasNewVote;
+}
+
+bool doEchoing(int nodeIDHighest) {
+    int[0,V] i;
+    bool hasNewVote = false;
+    int[NULL,VBITS] value;
+
+    for (i=0; i&lt;V; i++) {
+        value = nominationStates[nodeIDHighest].accepted[i];
+        if (value != NULL
+            &amp;&amp; !isContained(nominationStates[nodeID].accepted, value)
+            &amp;&amp; !isContained(nominationStates[nodeID].voted, value)) {
+            addArr(nominationStates[nodeID].voted, value);
+            hasNewVote = true;
+        }
+    }
+
+    for (i=0; i&lt;V; i++) {
+        value = nominationStates[nodeIDHighest].voted[i];
+        if (value != NULL
+            &amp;&amp; !isContained(nominationStates[nodeID].accepted, value)
+            &amp;&amp; !isContained(nominationStates[nodeID].voted, value)) {
+            addArr(nominationStates[nodeID].voted, value);
+            hasNewVote = true;
+        }
+    }
+
+    return hasNewVote;
+}
+
+void newRound() {
+    int[0,N] i;
+    int[NULL,N] nodeIDHighest;
+    bool hasNewMessage = false;
+    //int higherlayerInput;
+
+    if (n_round &lt; 100) {
+        n_round++;
+    }
+    if (!n_hasCandidate) {
+        nodeIDHighest = getHighestPriorityNode(n_round);
+        if (nodeIDHighest == nodeID) {
+            hasNewMessage = getHigherlayerInput();
+        }
+        else {
+            hasNewMessage = doEchoing(nodeIDHighest);
+        }
+
+        if (hasNewMessage) {
+            for (i=0; i&lt;curNodes; i++) {
+                if (outboundNodes[nodeID][i] != NULL
+                    &amp;&amp; isParticipant(outboundNodes[nodeID][i])) {
+                    nominationMessagesFromTo[nodeID][outboundNodes[nodeID][i]] = true;
+                }
+            }
+        }
+    }
+}
+
+bool hasNewNominationMessages() {
+    int[0,N] i;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if (inboundNodes[nodeID][i] != NULL 
+            &amp;&amp; isParticipant(inboundNodes[nodeID][i])
+            &amp;&amp; nominationMessagesFromTo[inboundNodes[nodeID][i]][nodeID]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void processMessageNomination() {
+    int[0,N] i,k;
+    int[0,VBITS] j;
+    int[NULL,VBITS] value = NULL;
+    bool hasNewMessage = false;
+    int[NULL,VBITS] cntValues[VBITS];
+
+    // blocking threshold check for accept nomination
+    for (j=0; j&lt;VBITS; j++) {
+        n_cntValues[j] = 0;
+    }
+    for (i=0; i&lt;curNodes; i++) {
+        if (qs[nodeID].validators[i] != NULL
+            &amp;&amp; isParticipant(qs[nodeID].validators[i])
+            &amp;&amp; qs[nodeID].validators[i] != nodeID) {
+            for (j=0; j&lt;V; j++) {
+                value = nominationStates[qs[nodeID].validators[i]].accepted[j];
+                if (value != NULL) {
+                    n_cntValues[value]++;
+                }
+            }
+        }
+    }
+    for (j=0; j&lt;VBITS; j++) {
+        if (n_cntValues[j] &gt; n_totalValidators - qs[nodeID].threshold) {
+            if (!isContained(nominationStates[nodeID].accepted, j)) {
+                addArr(nominationStates[nodeID].accepted, j);
+                removeArr(nominationStates[nodeID].voted, j);
+                hasNewMessage = true;
+            }
+
+            // if (!isContained(nominatedValues[nodeID], j)) {
+            //     addArr(nominatedValues[nodeID], j);
+            //     n_hasCandidate = true;
+            // }
+        }
+    }
+
+    // quorum threshold check for vote nomination
+    for (j=0; j&lt;VBITS; j++) {
+        n_cntValues[j] = 0;
+    }
+    for (i=0; i&lt;curNodes; i++) {
+        if (qs[nodeID].validators[i] != NULL &amp;&amp; isParticipant(qs[nodeID].validators[i])) {
+            for (j=0; j&lt;VBITS; j++) {
+                cntValues[j] = 0;
+            }
+            for (k=0; k&lt;curNodes; k++) {
+                if (qs[qs[nodeID].validators[i]].validators[k] != NULL 
+                    &amp;&amp; isParticipant(qs[qs[nodeID].validators[i]].validators[k])) {
+                    for (j=0; j&lt;V; j++) {
+                        value = nominationStates[qs[qs[nodeID].validators[i]].validators[k]].voted[j];
+                        if (value != NULL) {
+                            cntValues[value]++;
+                        }
+                        value = nominationStates[qs[qs[nodeID].validators[i]].validators[k]].accepted[j];
+                        if (value != NULL) {
+                            cntValues[value]++;
+                        }
+                    }
+                }
+            }
+            for (j=0; j&lt;VBITS; j++) {
+                if (cntValues[j] &gt;= qs[qs[nodeID].validators[i]].threshold) {
+                    n_cntValues[j]++;
+                }
+            }
+        }
+    }
+    for (j=0; j&lt;VBITS; j++) {
+        if (n_cntValues[j] &gt;= qs[nodeID].threshold
+            &amp;&amp; !isContained(nominationStates[nodeID].accepted, j)) {
+            addArr(nominationStates[nodeID].accepted, j);
+            removeArr(nominationStates[nodeID].voted, j);
+            hasNewMessage = true;
+        }
+    }
+
+    // quorum threshold check for accept nomination
+    for (j=0; j&lt;VBITS; j++) {
+        n_cntValues[j] = 0;
+    }
+    for (i=0; i&lt;curNodes; i++) {
+        if (qs[nodeID].validators[i] != NULL &amp;&amp; isParticipant(qs[nodeID].validators[i])) {
+            for (j=0; j&lt;VBITS; j++) {
+                cntValues[j] = 0;
+            }
+            for (k=0; k&lt;curNodes; k++) {
+                if (qs[qs[nodeID].validators[i]].validators[k] != NULL
+                    &amp;&amp; isParticipant(qs[qs[nodeID].validators[i]].validators[k])) {
+                    for (j=0; j&lt;V; j++) {
+                        value = nominationStates[qs[qs[nodeID].validators[i]].validators[k]].accepted[j];
+                        if (value != NULL) {
+                            cntValues[value]++;
+                        }
+                    }
+                }
+            }
+            for (j=0; j&lt;VBITS; j++) {
+                if (cntValues[j] &gt;= qs[qs[nodeID].validators[i]].threshold) {
+                    n_cntValues[j]++;
+                }
+            }
+        }
+    }
+    for (j=0; j&lt;VBITS; j++) {
+        if (n_cntValues[j] &gt;= qs[nodeID].threshold) {
+            if (!isContained(nominationStates[nodeID].accepted, j)) {
+                addArr(nominationStates[nodeID].accepted, j);
+                removeArr(nominationStates[nodeID].voted, j);
+                hasNewMessage = true;
+            }
+
+            if (!isContained(nominatedValues[nodeID], j)) {
+                addArr(nominatedValues[nodeID], j);
+                n_hasCandidate = true;
+            }
+        }
+    }
+
+    // Clear messages
+    for (i=0; i&lt;curNodes; i++) {
+        if (inboundNodes[nodeID][i] != NULL
+            &amp;&amp; nominationMessagesFromTo[inboundNodes[nodeID][i]][nodeID]) {
+            nominationMessagesFromTo[inboundNodes[nodeID][i]][nodeID] = false;
+        }
+    }
+
+    // Broadcast a new message
+    if (hasNewMessage) {
+        for (i=0; i&lt;curNodes; i++) {
+            if (outboundNodes[nodeID][i] != NULL
+                &amp;&amp; isParticipant(outboundNodes[nodeID][i])) {
+                nominationMessagesFromTo[nodeID][outboundNodes[nodeID][i]] = true;
+            }
+        }
+    }
+}
+
+void doEnds() {
+    int[0,V] j;
+
+    for (j=0; j&lt;V; j++) {
+        nominatedValues[nodeID][j] = NULL;
+        nominationStates[nodeID].voted[j] = NULL;
+        nominationStates[nodeID].accepted[j] = NULL;
+    }
+}
+
+bool isExternalized(int value){
+    int[0,V] i;
+
+    for(i=0; i&lt;V; i++){
+        if(externalizedInputs[i] == value)
+            return true;
+    }
+    return false;
+}
+
+bool hasHigherlayerInput() {
+    int[0,N] i;
+    int[0,V] j;
+
+    for (i=0; i&lt;N; i++) {
+        for (j=0; j&lt;V; j++) {
+            if (higherlayerInput[i][j] != NULL &amp;&amp; !isExternalized(higherlayerInput[i][j])) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+</declaration>
+		<location id="id4" x="-663" y="-212">
+		</location>
+		<location id="id5" x="-527" y="-17">
+		</location>
+		<location id="id6" x="-365" y="-212">
+			<name x="-348" y="-221">NominationEnds</name>
+		</location>
+		<location id="id7" x="8" y="-17">
+			<name x="25" y="-25">MessageProcessed</name>
+		</location>
+		<location id="id8" x="-170" y="178">
+			<name x="-196" y="195">InRound</name>
+		</location>
+		<location id="id9" x="-365" y="-17">
+			<name x="-357" y="-51">RoundTimeOuted</name>
+		</location>
+		<location id="id10" x="-663" y="-17">
+			<name x="-697" y="-8">Start</name>
+		</location>
+		<init ref="id10"/>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-586" y="-229">externalized[nodeID]?</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-578" y="-144">!hasHigherlayerInput()</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-671" y="34">!isParticipant(nodeID)</label>
+			<nail x="-595" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-510" y="-17">isParticipant(nodeID)</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-943" y="-153">ballotStates[nodeID].curState == SCPExternalize
+&amp;&amp; outputValues[nodeID][slotCur] == NULL</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-399" y="-136">nominationEnds[nodeID]</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-85" y="144">n_clockRound &lt;= 1 + n_round</label>
+			<nail x="8" y="178"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-221" y="-59">n_clockRound &gt; 1 + n_round</label>
+			<label kind="assignment" x="-221" y="-42">newRound()</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-212" y="59">n_clockRound &lt;= 1 + n_round
+&amp;&amp; hasNewNominationMessages()</label>
+			<label kind="assignment" x="-212" y="93">processMessageNomination()</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-459" y="136">n_clockRound &gt; 1 + n_round</label>
+			<label kind="assignment" x="-459" y="153">newRound()</label>
+			<nail x="-365" y="178"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-357" y="17">!nominationEnds[nodeID]</label>
+			<label kind="assignment" x="-348" y="34">n_clockRound = 0</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-654" y="-59">hasHigherlayerInput()</label>
+			<label kind="assignment" x="-654" y="-42">initNominationState()</label>
+		</transition>
+	</template>
+	<template>
+		<name>NodeBallot</name>
+		<parameter>int nodeID</parameter>
+		<declaration>clock n_clockBCounter;
+int[0,N] n_totalValidators = 0;
+bool n_timerArmed = false;
+int[0,N] newMessageNode = 0;
+int[NULL,INFINITY] acceptedCounterC = 0;
+int[NULL,INFINITY] acceptedCounterH = 0;
+SCPBallot newMessageBallots[3] = {{0,NULL},{0,NULL},{0,NULL}};
+SCPBallot tempBallot = {0,NULL};
+SCPBallot acceptedBallot = {0,NULL};
+SCPBallot confirmedHBallot = {0,NULL};
+
+int combineValues(int[NULL,VBITS] &amp;arr[V]) {
+    int[0,V] i;
+    int[NULL,VBITS] result = arr[0];
+
+    for (i=1; i&lt;V; i++) {
+        if (arr[i] != NULL) {
+            result += arr[i];
+        }
+    }
+    return result;
+}
+
+void updatebValue() {
+    bool hasNewMessage = false;
+    int[NULL,VBITS] newValue;
+
+    if (ballotStates[nodeID].h.value != NULL) {
+        ballotStates[nodeID].b.value = ballotStates[nodeID].h.value;
+        nominationEnds[nodeID] = true;
+    }
+    else if (nominatedValues[nodeID][0] != NULL) {
+        newValue = combineValues(nominatedValues[nodeID]);
+        if (newValue != ballotStates[nodeID].b.value) {
+            ballotStates[nodeID].b.value = newValue;
+        }
+    }
+    else if (ballotStates[nodeID].p.value != NULL) {
+        ballotStates[nodeID].b.value = ballotStates[nodeID].p.value;
+    }
+}
+
+bool isParticipant(int nID){
+    if(nID &lt; curNodes){
+        return true;
+    }
+    return false;
+}
+
+void initBallotState() {
+    int[0,N] i;
+    int[0,3] j;
+
+    curNodes = totalNodes[slotCur]; // set the number of current nodes
+    n_totalValidators = 0;
+    n_timerArmed = false;
+    newMessageNode = 0;
+    tempBallot.counter = 0;
+    tempBallot.value = NULL;
+    acceptedBallot.counter = 0;
+    acceptedBallot.value = NULL;
+    confirmedHBallot.counter = 0;
+    confirmedHBallot.value = NULL;
+    for (j=0; j&lt;3; j++) {
+        newMessageBallots[j].counter = 0;
+        newMessageBallots[j].value = NULL;
+    }
+    for (i=0; i&lt;curNodes; i++) {
+        ballotMessagesFromTo[nodeID][i] = false;
+        ballotMessagesFromTo[i][nodeID] = false;
+        if (qs[nodeID].validators[i] != NULL &amp;&amp; isParticipant(qs[nodeID].validators[i])) {
+            n_totalValidators++;
+        }
+    }
+    qs[nodeID].threshold = n_totalValidators*THR/100 + 1;
+
+    ballotStates[nodeID].curState = SCPPrepare;
+    ballotStates[nodeID].b.counter = 1;
+    ballotStates[nodeID].b.value = combineValues(nominatedValues[nodeID]);
+    ballotStates[nodeID].p.counter = 0;
+    ballotStates[nodeID].p.value = NULL;
+    ballotStates[nodeID].pp.counter = 0;
+    ballotStates[nodeID].pp.value = NULL;
+    ballotStates[nodeID].h.counter = 0;
+    ballotStates[nodeID].h.value = NULL;
+    ballotStates[nodeID].c.counter = 0;
+    ballotStates[nodeID].c.value = NULL;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if (outboundNodes[nodeID][i] != NULL
+            &amp;&amp; isParticipant(outboundNodes[nodeID][i])
+            &amp;&amp; outboundNodes[nodeID][i] != nodeID) {
+            ballotMessagesFromTo[nodeID][outboundNodes[nodeID][i]] = true;
+        }
+    }
+}
+
+void armTimer() {
+    if (!n_timerArmed) {
+        n_clockBCounter = 0;
+        n_timerArmed = true;
+    }
+}
+
+void timerFired() {
+    int[0,N] i;
+
+    n_timerArmed = false;
+    if (ballotStates[nodeID].b.counter &lt; INFINITY) {
+        ballotStates[nodeID].b.counter++;
+    }
+    updatebValue();
+    for (i=0; i&lt;curNodes; i++) {
+        if (outboundNodes[nodeID][i] != NULL
+            &amp;&amp; isParticipant(outboundNodes[nodeID][i])
+            &amp;&amp; outboundNodes[nodeID][i] != nodeID) {
+            ballotMessagesFromTo[nodeID][outboundNodes[nodeID][i]] = true;
+        }
+    }
+}
+
+bool checkAcceptedPrepareQuorum(int nodeIndex, SCPBallot candidate) {
+    int[0,N] i;
+    int[NULL,N] cur;
+    int[0,N] cntQuorumTH = 0;
+    bool isVBlocked = false;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeIndex].validators[i]) != NULL &amp;&amp; isParticipant(cur)) {
+            if (ballotStates[cur].curState == SCPPrepare) {
+                if ((ballotStates[cur].p.counter != 0
+                        &amp;&amp; (ballotStates[cur].p.value == candidate.value
+                            &amp;&amp; ballotStates[cur].p.counter &gt;= candidate.counter))
+                    || (ballotStates[cur].pp.counter != 0
+                        &amp;&amp; (ballotStates[cur].pp.value == candidate.value
+                            &amp;&amp; ballotStates[cur].pp.counter &gt;= candidate.counter))) {
+                    if (cur != nodeID) {
+                        cntQuorumTH++;
+                        isVBlocked = true;
+                    }
+                }
+                if (!isVBlocked
+                    &amp;&amp; (ballotStates[cur].b.value == candidate.value
+                        &amp;&amp; ballotStates[cur].b.counter &gt;= candidate.counter)) {
+                    cntQuorumTH++;
+                }
+            }
+            else if (ballotStates[cur].curState == SCPCommit) {
+                if (ballotStates[cur].p.value == candidate.value
+                    &amp;&amp; ballotStates[cur].p.counter &gt;= candidate.counter) {
+                    if (cur != nodeID) {
+                        cntQuorumTH++;
+                        isVBlocked = true;
+                    }
+                }
+                if (!isVBlocked
+                    &amp;&amp; ballotStates[cur].b.value == candidate.value) {
+                    cntQuorumTH++;
+                }
+            }
+            else {// ballotStates[cur].curState == SCPExternalize
+                if (ballotStates[cur].c.value == candidate.value) {
+                    if (cur != nodeID) {
+                        cntQuorumTH++;
+                        isVBlocked = true;
+                    }
+                }
+                if (!isVBlocked
+                    &amp;&amp; ballotStates[cur].c.value == candidate.value) {
+                    cntQuorumTH++;
+                }
+            }
+
+            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool checkAcceptedPrepare(SCPBallot candidate) {
+    int[0,N] i,j;
+    int[NULL,N] cur,curIn;
+    int[0,N] cntVBlockTH = 0;
+    int[0,N] cntQuorumTH = 0;
+
+    if (ballotStates[nodeID].curState == SCPCommit) {
+        if (!(ballotStates[nodeID].p.value == candidate.value
+            &amp;&amp; ballotStates[nodeID].p.counter &lt; candidate.counter)) {
+            return false;
+        }
+    }
+
+    if (ballotStates[nodeID].pp.counter != 0
+        &amp;&amp; (ballotStates[nodeID].pp.counter &gt; candidate.counter
+            || (ballotStates[nodeID].pp.counter == candidate.counter
+                &amp;&amp; ballotStates[nodeID].pp.value &gt;= candidate.value))) {
+        return false;
+    }
+
+    if (ballotStates[nodeID].p.counter != 0
+        &amp;&amp; (ballotStates[nodeID].p.value == candidate.value
+            &amp;&amp; ballotStates[nodeID].p.counter &gt;= candidate.counter)) {
+        return false;
+    }
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeID].validators[i]) != NULL &amp;&amp; isParticipant(cur)) {
+            if (ballotStates[cur].curState == SCPPrepare) {
+                if ((ballotStates[cur].p.counter != 0
+                        &amp;&amp; (ballotStates[cur].p.value == candidate.value
+                            &amp;&amp; ballotStates[cur].p.counter &gt;= candidate.counter))
+                    || (ballotStates[cur].pp.counter != 0
+                        &amp;&amp; (ballotStates[cur].pp.value == candidate.value
+                            &amp;&amp; ballotStates[cur].pp.counter &gt;= candidate.counter))) {
+                    if (cur != nodeID) {
+                        cntVBlockTH++;
+                    }
+                }
+            }
+            else if (ballotStates[cur].curState == SCPCommit) {
+                if (ballotStates[cur].p.value == candidate.value
+                    &amp;&amp; ballotStates[cur].p.counter &gt;= candidate.counter) {
+                    if (cur != nodeID) {
+                        cntVBlockTH++;
+                    }
+                }
+            }
+            else {// ballotStates[cur].curState == SCPExternalize
+                if (ballotStates[cur].c.value == candidate.value) {
+                    if (cur != nodeID) {
+                        cntVBlockTH++;
+                    }
+                }
+            }
+
+            if (cntVBlockTH &gt; n_totalValidators - qs[nodeID].threshold) {
+                return true;
+            }
+
+            for (j=0; j&lt;curNodes; j++) {
+                if ((curIn = qs[cur].validators[j]) != NULL &amp;&amp; isParticipant(curIn)) {
+                    if (checkAcceptedPrepareQuorum(nodeID, candidate)) {
+                        cntQuorumTH++;
+                    }
+
+                    if (cntQuorumTH &gt;= qs[nodeID].threshold) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool checkConfirmedPrepareQuorum(int nodeIndex, SCPBallot candidate) {
+    int[0,N] i;
+    int[NULL,N] cur;
+    int[0,N] cntQuorumTH = 0;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeIndex].validators[i]) != NULL &amp;&amp; isParticipant(cur)) {
+            if (ballotStates[cur].curState == SCPPrepare) {
+                if ((ballotStates[cur].p.counter != 0
+                        &amp;&amp; (ballotStates[cur].p.value == candidate.value
+                            &amp;&amp; ballotStates[cur].p.counter &gt;= candidate.counter))
+                    || (ballotStates[cur].pp.counter != 0
+                        &amp;&amp; (ballotStates[cur].pp.value == candidate.value
+                            &amp;&amp; ballotStates[cur].pp.counter &gt;= candidate.counter))) {
+                    cntQuorumTH++;
+                }
+            }
+            else if (ballotStates[cur].curState == SCPCommit) {
+                if (ballotStates[cur].p.value == candidate.value
+                    &amp;&amp; ballotStates[cur].p.counter &gt;= candidate.counter) {
+                    cntQuorumTH++;
+                }
+            }
+            else {// ballotStates[cur].curState == SCPExternalize
+                if (ballotStates[cur].c.value == candidate.value) {
+                    cntQuorumTH++;
+                }
+            }
+
+            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool checkConfirmedPrepare(SCPBallot candidate) {
+    int[0,N] i,j;
+    int[NULL,N] cur,curIn;
+    int[0,N] cntQuorumTH = 0;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeID].validators[i]) != NULL &amp;&amp; isParticipant(cur)) {
+            for (j=0; j&lt;curNodes; j++) {
+                if ((curIn = qs[cur].validators[j]) != NULL &amp;&amp; isParticipant(curIn)) {
+                    if (checkConfirmedPrepareQuorum(nodeID, candidate)) {
+                        cntQuorumTH++;
+                    }
+
+                    if (cntQuorumTH &gt;= qs[nodeID].threshold) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool checkAcceptedCommitQuorum(int nodeIndex, int ballotValue, int counterC, int counterH) {
+    int[0,N] i;
+    int[NULL,N] cur;
+    int[0,N] cntQuorumTH = 0;
+    bool isVBlocked = false;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeIndex].validators[i]) != NULL &amp;&amp; isParticipant(cur)) {
+            isVBlocked = false;
+            if (ballotStates[cur].curState == SCPPrepare) {
+                if (ballotStates[cur].b.value == ballotValue
+                    &amp;&amp; ballotStates[cur].h.counter &gt;= counterH) {
+                    cntQuorumTH++;
+                }
+            }
+            else if (ballotStates[cur].curState == SCPCommit) {
+                if (ballotStates[cur].b.value == ballotValue
+                    &amp;&amp; (ballotStates[cur].c.counter &lt;= counterC
+                        &amp;&amp; ballotStates[cur].h.counter &gt;= counterH)) {
+                    cntQuorumTH++;
+                    isVBlocked = true;
+                }
+                if (!isVBlocked
+                    &amp;&amp; (ballotStates[cur].b.value == ballotValue
+                        &amp;&amp; ballotStates[cur].c.counter &lt;= counterC)) {
+                    cntQuorumTH++;
+                }
+            }
+            else {// ballotStates[cur].curState == SCPExternalize
+                if (ballotStates[cur].c.value == ballotValue
+                    &amp;&amp; ballotStates[cur].c.counter &lt;= counterC) {
+                    cntQuorumTH++;
+                    isVBlocked = true;
+                }
+                if (!isVBlocked
+                    &amp;&amp; (ballotStates[cur].c.value == ballotValue
+                        &amp;&amp; ballotStates[cur].c.counter &lt;= counterC)) {
+                    cntQuorumTH++;
+                }
+            }
+
+            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool checkAcceptedCommit(int ballotValue, int counterC, int counterH) {
+    int[0,N] i,j;
+    int[NULL,N] cur,curIn;
+    int[0,N] cntVBlockTH = 0;
+    int[0,N] cntQuorumTH = 0;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeID].validators[i]) != NULL &amp;&amp; isParticipant(cur)) {
+            if (ballotStates[cur].curState == SCPPrepare) {
+                // do nothing
+            }
+            else if (ballotStates[cur].curState == SCPCommit) {
+                if (ballotStates[cur].b.value == ballotValue
+                    &amp;&amp; (ballotStates[cur].c.counter &lt;= counterC
+                        &amp;&amp; ballotStates[cur].h.counter &gt;= counterH)) {
+                    cntVBlockTH++;
+                }
+            }
+            else {// ballotStates[cur].curState == SCPExternalize
+                if (ballotStates[cur].c.value == ballotValue
+                    &amp;&amp; ballotStates[cur].c.counter &lt;= counterC) {
+                    cntVBlockTH++;
+                }
+            }
+
+            if (cntVBlockTH &gt; n_totalValidators - qs[nodeID].threshold) {
+                return true;
+            }
+
+            for (j=0; j&lt;curNodes; j++) {
+                if ((curIn = qs[cur].validators[j]) != NULL) {
+                    if (checkAcceptedCommitQuorum(nodeID, ballotValue, counterC, counterH)) {
+                        cntQuorumTH++;
+                    }
+
+                    if (cntQuorumTH &gt;= qs[nodeID].threshold) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool checkConfirmedCommitQuorum(int nodeIndex, int ballotValue, int counterC, int counterH) {
+    int[0,N] i;
+    int[NULL,N] cur;
+    int[0,N] cntQuorumTH = 0;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeIndex].validators[i]) != NULL &amp;&amp; isParticipant(cur)) {
+            if (ballotStates[cur].curState == SCPPrepare) {
+                // do nothing
+            }
+            else if (ballotStates[cur].curState == SCPCommit) {
+                if (ballotStates[cur].b.value == ballotValue
+                    &amp;&amp; ballotStates[cur].c.counter &lt;= counterC
+                    &amp;&amp; ballotStates[cur].h.counter &gt;= counterH) {
+                    cntQuorumTH++;
+                }
+            }
+            else {// ballotStates[cur].curState == SCPExternalize
+                if (ballotStates[cur].c.value == ballotValue
+                    &amp;&amp; ballotStates[cur].c.counter &lt;= counterC) {
+                    cntQuorumTH++;
+                }
+            }
+
+            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool checkConfirmedCommit(int ballotValue, int counterC, int counterH) {
+    int[0,N] i,j;
+    int[NULL,N] cur,curIn;
+    int[0,N] cntQuorumTH = 0;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeID].validators[i]) != NULL &amp;&amp; isParticipant(cur)) {
+            for (j=0; j&lt;curNodes; j++) {
+                if ((curIn = qs[cur].validators[j]) != NULL &amp;&amp; isParticipant(curIn)) {
+                    if (checkConfirmedCommitQuorum(nodeID, ballotValue, counterC, counterH)) {
+                        cntQuorumTH++;
+                    }
+
+                    if (cntQuorumTH &gt;= qs[nodeID].threshold) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+void sortArr(int len, int[NULL,INFINITY]&amp; arr[N*3]) {
+    int[0,N*3] i,j,maxIndex;
+    int[NULL,INFINITY] temp;
+
+    for (i=0; i&lt;len; i++) {
+        temp = arr[i];
+        maxIndex = i;
+        for (j=i+1; j&lt;len; j++) {
+            if (temp &lt;= arr[j]) {
+                temp = arr[j];
+                maxIndex = j;
+            }
+        }
+        arr[maxIndex] = arr[i];
+        arr[i] = temp;
+    }
+}
+
+bool attemptAcceptPrepare() {
+    int[0,N] i;
+    int[0,3] j; // index for highestBallots[3]
+    bool isAgreed = false;
+    bool hasNewAcceptedPrepare = false;
+
+    acceptedBallot.counter = 0;
+    acceptedBallot.value = NULL;
+    for (i=0; i&lt;curNodes; i++) {
+        isAgreed = false;
+        tempBallot.counter = 0;
+        tempBallot.value = NULL;
+        if (ballotStates[i].curState == SCPPrepare) {
+            for (j=0; j&lt;3; j++) {
+                if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
+                    if (ballotStates[i].b.value == newMessageBallots[j].value
+                        &amp;&amp; ballotStates[i].b.counter &lt;= newMessageBallots[j].counter) {
+                        isAgreed = checkAcceptedPrepare(ballotStates[i].b);
+                        if (isAgreed) {
+                            tempBallot.counter = ballotStates[i].b.counter;
+                            tempBallot.value = ballotStates[i].b.value;
+                        }
+                        else {
+                            if (ballotStates[i].p.counter != 0
+                                &amp;&amp; (ballotStates[i].p.value == newMessageBallots[j].value
+                                    &amp;&amp; ballotStates[i].p.counter &lt;= newMessageBallots[j].counter)) {
+                                isAgreed = checkAcceptedPrepare(ballotStates[i].p);
+                                if (isAgreed) {
+                                    tempBallot.counter = ballotStates[i].p.counter;
+                                    tempBallot.value = ballotStates[i].p.value;
+                                }
+                                else {
+                                    if (ballotStates[i].pp.counter != 0
+                                        &amp;&amp; (ballotStates[i].pp.value == newMessageBallots[j].value
+                                            &amp;&amp; ballotStates[i].pp.counter &lt;= newMessageBallots[j].counter)) {
+                                        isAgreed = checkAcceptedPrepare(ballotStates[i].pp);
+                                        if (isAgreed) {
+                                            tempBallot.counter = ballotStates[i].pp.counter;
+                                            tempBallot.value = ballotStates[i].pp.value;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else if (ballotStates[i].curState == SCPCommit) {
+            for (j=0; j&lt;3; j++) {
+                if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
+                    if (ballotStates[i].c.value == newMessageBallots[j].value) {
+                        isAgreed = checkAcceptedPrepare(newMessageBallots[j]);
+                        if (isAgreed) {
+                            tempBallot.counter = newMessageBallots[j].counter;
+                            tempBallot.value = newMessageBallots[j].value;
+                        }
+                        else {
+                            if (ballotStates[i].p.counter &lt; newMessageBallots[j].counter) {
+                                tempBallot.counter = ballotStates[i].p.counter;
+                                tempBallot.value = newMessageBallots[j].value;
+                                isAgreed = checkAcceptedPrepare(tempBallot);
+                                if (isAgreed) {
+                                    tempBallot.counter = ballotStates[i].p.counter;
+                                    tempBallot.value = newMessageBallots[j].value;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else {// ballotStates[i].curState == SCPExternalize
+            for (j=0; j&lt;3; j++) {
+                if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
+                    if (ballotStates[i].c.value == newMessageBallots[j].value) {
+                        isAgreed = checkAcceptedPrepare(newMessageBallots[j]);
+                        if (isAgreed) {
+                            tempBallot.counter = newMessageBallots[j].counter;
+                            tempBallot.value = newMessageBallots[j].value;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (isAgreed) {
+            hasNewAcceptedPrepare = true;
+            if (acceptedBallot.counter &lt; tempBallot.counter
+                || (acceptedBallot.counter == tempBallot.counter
+                    &amp;&amp; acceptedBallot.value &lt; tempBallot.value)) {
+                acceptedBallot.counter = tempBallot.counter;
+                acceptedBallot.value = tempBallot.value;
+            }
+        }
+    }
+
+    return hasNewAcceptedPrepare;
+}
+
+bool attemptConfirmPrepare() {
+    int[0,N] i;
+    int[0,3] j; // index for highestBallots[3]
+    bool isAgreed = false;
+    bool hasNewConfirmedPrepare = false;
+
+    confirmedHBallot.counter = 0;
+    confirmedHBallot.value = NULL;
+    for (i=0; i&lt;curNodes; i++) {
+        isAgreed = false;
+        tempBallot.counter = 0;
+        tempBallot.value = NULL;
+        if (ballotStates[i].curState == SCPPrepare) {
+            for (j=0; j&lt;3; j++) {
+                if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
+                    if (ballotStates[i].b.value == newMessageBallots[j].value
+                        &amp;&amp; ballotStates[i].b.counter &lt;= newMessageBallots[j].counter) {
+                        isAgreed = checkConfirmedPrepare(ballotStates[i].b);
+                        if (isAgreed) {
+                            tempBallot.counter = ballotStates[i].b.counter;
+                            tempBallot.value = ballotStates[i].b.value;
+                        }
+                        else {
+                            if (ballotStates[i].p.counter != 0
+                                &amp;&amp; (ballotStates[i].p.value == newMessageBallots[j].value
+                                    &amp;&amp; ballotStates[i].p.counter &lt;= newMessageBallots[j].counter)) {
+                                isAgreed = checkConfirmedPrepare(ballotStates[i].p);
+                                if (isAgreed) {
+                                    tempBallot.counter = ballotStates[i].p.counter;
+                                    tempBallot.value = ballotStates[i].p.value;
+                                }
+                                else {
+                                    if (ballotStates[i].pp.counter != 0
+                                        &amp;&amp; (ballotStates[i].pp.value == newMessageBallots[j].value
+                                            &amp;&amp; ballotStates[i].pp.counter &lt;= newMessageBallots[j].counter)) {
+                                        isAgreed = checkConfirmedPrepare(ballotStates[i].pp);
+                                        if (isAgreed) {
+                                            tempBallot.counter = ballotStates[i].pp.counter;
+                                            tempBallot.value = ballotStates[i].pp.value;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else if (ballotStates[i].curState == SCPCommit) {
+            for (j=0; j&lt;3; j++) {
+                if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
+                    if (ballotStates[i].c.value == newMessageBallots[j].value) {
+                        isAgreed = checkConfirmedPrepare(newMessageBallots[j]);
+                        if (isAgreed) {
+                            tempBallot.counter = newMessageBallots[j].counter;
+                            tempBallot.value = newMessageBallots[j].value;
+                        }
+                        else {
+                            if (ballotStates[i].p.counter &lt; newMessageBallots[j].counter) {
+                                tempBallot.counter = ballotStates[i].p.counter;
+                                tempBallot.value = newMessageBallots[j].value;
+                                isAgreed = checkConfirmedPrepare(tempBallot);
+                                if (isAgreed) {
+                                    tempBallot.counter = ballotStates[i].p.counter;
+                                    tempBallot.value = newMessageBallots[j].value;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else {// ballotStates[i].curState == SCPExternalize
+            for (j=0; j&lt;3; j++) {
+                if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
+                    if (ballotStates[i].c.value == newMessageBallots[j].value) {
+                        isAgreed = checkConfirmedPrepare(newMessageBallots[j]);
+                        if (isAgreed) {
+                            tempBallot.counter = newMessageBallots[j].counter;
+                            tempBallot.value = newMessageBallots[j].value;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (isAgreed) {
+            if (ballotStates[nodeID].h.counter == 0
+                || (ballotStates[nodeID].h.counter &lt; tempBallot.counter
+                    || (ballotStates[nodeID].h.counter == tempBallot.counter
+                        &amp;&amp; ballotStates[nodeID].h.value &lt; tempBallot.value))) {
+                hasNewConfirmedPrepare = true;
+                if (confirmedHBallot.counter == 0) {
+                    confirmedHBallot.counter = tempBallot.counter;
+                    confirmedHBallot.value = tempBallot.value;
+                }
+                else {
+                    if (confirmedHBallot.counter &lt; tempBallot.counter
+                        || (confirmedHBallot.counter == tempBallot.counter
+                            &amp;&amp; confirmedHBallot.value &lt; tempBallot.value)) {
+                        confirmedHBallot.counter = tempBallot.counter;
+                        confirmedHBallot.value = tempBallot.value;
+                    }
+                }
+            }
+        }
+    }
+
+    return hasNewConfirmedPrepare;
+}
+
+bool attemptAcceptCommit() {
+    int[0,N] i;
+    int[0,N*3] k; // index for curBoundaries[N*3]
+    int[NULL,INFINITY] curBoundaries[N*3];
+    int[0,N*3] nextBoundary = 0;
+    bool isAgreed = false;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if (ballotStates[i].curState == SCPPrepare
+            &amp;&amp; ballotStates[i].b.value == newMessageBallots[0].value) {
+            if (ballotStates[i].c.counter != 0) {
+                curBoundaries[nextBoundary++] = ballotStates[i].c.counter;
+            }
+            if (ballotStates[i].h.counter != 0) {
+                curBoundaries[nextBoundary++] = ballotStates[i].h.counter;
+            }
+        }
+        else if (ballotStates[i].curState == SCPCommit
+            &amp;&amp; ballotStates[i].b.value == newMessageBallots[0].value) {
+            curBoundaries[nextBoundary++] = ballotStates[i].c.counter;
+            curBoundaries[nextBoundary++] = ballotStates[i].h.counter;
+        }
+        else {// ballotStates[i].curState == SCPExternalize
+            if (ballotStates[i].c.value == newMessageBallots[0].value) {
+                curBoundaries[nextBoundary++] = ballotStates[i].c.counter;
+                curBoundaries[nextBoundary++] = ballotStates[i].h.counter;
+                curBoundaries[nextBoundary++] = INFINITY;
+            }
+        }
+    }
+
+    // sort curBoundaries[0 .. nextBoundary-1]: highest first
+    sortArr(nextBoundary, curBoundaries);
+
+    k = 0;
+    acceptedCounterC = 0;
+    acceptedCounterH = 0;
+    isAgreed = false;
+    do {
+        if (acceptedCounterH == 0) {// find the high boundary
+            if (checkAcceptedCommit(newMessageBallots[0].value, curBoundaries[k], curBoundaries[k])) {
+                isAgreed = true;
+                acceptedCounterH = curBoundaries[k];
+                k++;
+            }
+            else {
+                k++;
+            }
+        }
+        else {// find the low boundary
+            if (checkAcceptedCommit(newMessageBallots[0].value, curBoundaries[k], acceptedCounterH)) {
+                acceptedCounterC = curBoundaries[k];
+                k = nextBoundary;
+            }
+            else {
+                k++;
+            }
+        }
+    } while (acceptedCounterC == 0 &amp;&amp; k &lt; nextBoundary);
+
+    return isAgreed;
+}
+
+bool attemptConfirmCommit() {
+    int[0,N] i;
+    int[0,N*3] k; // index for curBoundaries[N*3]
+    int[NULL,INFINITY] curBoundaries[N*3];
+    int[0,N*3] nextBoundary = 0;
+    bool isAgreed = false;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if (ballotStates[i].curState == SCPPrepare) {
+            // do nothing
+        }
+        else if (ballotStates[i].curState == SCPCommit
+            &amp;&amp; ballotStates[i].b.value == newMessageBallots[0].value) {
+            curBoundaries[nextBoundary++] = ballotStates[i].c.counter;
+            curBoundaries[nextBoundary++] = ballotStates[i].h.counter;
+        }
+        else {// ballotStates[i].curState == SCPExternalize
+            if (ballotStates[i].c.value == newMessageBallots[0].value) {
+                curBoundaries[nextBoundary++] = ballotStates[i].c.counter;
+                curBoundaries[nextBoundary++] = ballotStates[i].h.counter;
+                curBoundaries[nextBoundary++] = INFINITY;
+            }
+        }
+    }
+
+    // sort curBoundaries[0 .. nextBoundary-1]: highest first
+    sortArr(nextBoundary, curBoundaries);
+
+    k = 0;
+    acceptedCounterC = 0;
+    acceptedCounterH = 0;
+    isAgreed = false;
+    do {
+        if (acceptedCounterH == 0) {// find the high boundary
+            if (checkConfirmedCommit(newMessageBallots[0].value, curBoundaries[k], curBoundaries[k])) {
+                isAgreed = true;
+                acceptedCounterH = curBoundaries[k];
+                k++;
+            }
+            else {
+                k++;
+            }
+        }
+        else {// find the low boundary
+            if (checkConfirmedCommit(newMessageBallots[0].value, curBoundaries[k], acceptedCounterH)) {
+                acceptedCounterC = curBoundaries[k];
+                k = nextBoundary;
+            }
+            else {
+                k++;
+            }
+        }
+    } while (acceptedCounterC == 0 &amp;&amp; k &lt; nextBoundary);
+
+    return isAgreed;
+}
+
+void processMessagePrepare() {
+    int[0,N] i;
+    int[0,3] j; // index for highestBallots[3]
+    bool hasNewAcceptedPrepare = false;
+    bool hasNewConfirmedPrepare = false;
+    bool hasNewAcceptedCommit = false;
+    bool hasNewMessage = false;
+
+    tempBallot.counter = 0;
+    tempBallot.value = NULL;
+    newMessageNode = nodeID;
+    for (i=0; i&lt;curNodes; i++) {
+        if (inboundNodes[nodeID][i] != NULL
+            &amp;&amp; isParticipant(inboundNodes[nodeID][i])
+            &amp;&amp; ballotMessagesFromTo[inboundNodes[nodeID][i]][nodeID]) {
+            newMessageNode = inboundNodes[nodeID][i];
+        }
+    }
+
+    if (ballotStates[newMessageNode].curState == SCPPrepare) {
+        newMessageBallots[0].counter = ballotStates[newMessageNode].b.counter;
+        newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        newMessageBallots[1].counter = ballotStates[newMessageNode].p.counter;
+        newMessageBallots[1].value = ballotStates[newMessageNode].p.value;
+        newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
+        newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
+    }
+    else if (ballotStates[newMessageNode].curState == SCPCommit) {
+        newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
+        newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        newMessageBallots[1].counter = INFINITY;
+        newMessageBallots[1].value = ballotStates[newMessageNode].b.value;
+        newMessageBallots[2].counter = 0;
+        newMessageBallots[2].value = NULL;
+    }
+    else {// ballotStates[newMessageNode].curState == SCPExternalize
+        newMessageBallots[0].counter = INFINITY;
+        newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
+        newMessageBallots[1].counter = 0;
+        newMessageBallots[1].value = NULL;
+        newMessageBallots[2].counter = 0;
+        newMessageBallots[2].value = NULL;
+    }
+
+    // blocking threshold check for b.counter
+
+    // blocking threshold check for accept prepare ballots (attemptAcceptPrepare)
+    // quorum threshold check for vote prepare ballots (attemptAcceptPrepare)
+    hasNewAcceptedPrepare = attemptAcceptPrepare();
+
+    if (hasNewAcceptedPrepare) {
+        // update p or pp
+        if (ballotStates[nodeID].p.counter == 0) {
+            ballotStates[nodeID].p.counter = acceptedBallot.counter;
+            ballotStates[nodeID].p.value = acceptedBallot.value;
+            hasNewMessage = hasNewMessage | true;
+        }
+        else {
+            if (ballotStates[nodeID].p.counter &lt; acceptedBallot.counter
+                || (ballotStates[nodeID].p.counter == acceptedBallot.counter
+                    &amp;&amp; ballotStates[nodeID].p.value &lt; acceptedBallot.value)) {
+                if (ballotStates[nodeID].p.value != acceptedBallot.value) {
+                    ballotStates[nodeID].pp.counter = ballotStates[nodeID].p.counter;
+                    ballotStates[nodeID].pp.value = ballotStates[nodeID].p.value;
+                }
+                ballotStates[nodeID].p.counter = acceptedBallot.counter;
+                ballotStates[nodeID].p.value = acceptedBallot.value;
+                hasNewMessage = hasNewMessage | true;
+            }
+            else if (ballotStates[nodeID].p.counter &gt; acceptedBallot.counter
+                || (ballotStates[nodeID].p.counter == acceptedBallot.counter
+                    &amp;&amp; ballotStates[nodeID].p.value &gt; acceptedBallot.value)) {
+                if (ballotStates[nodeID].pp.counter == 0
+                    || (ballotStates[nodeID].pp.counter &lt; acceptedBallot.counter
+                        || (ballotStates[nodeID].pp.counter == acceptedBallot.counter
+                            &amp;&amp; ballotStates[nodeID].pp.value &lt; acceptedBallot.value))) {
+                    if (ballotStates[nodeID].p.value != acceptedBallot.value) {
+                        ballotStates[nodeID].pp.counter = acceptedBallot.counter;
+                        ballotStates[nodeID].pp.value = acceptedBallot.value;
+                        hasNewMessage = hasNewMessage | true;
+                    }
+                }
+            }
+        }
+
+        // clear c if required
+        if (ballotStates[nodeID].c.counter != 0
+            &amp;&amp; ballotStates[nodeID].h.counter != 0
+            &amp;&amp; ((ballotStates[nodeID].p.counter != 0
+                    &amp;&amp; ballotStates[nodeID].h.value != ballotStates[nodeID].p.value
+                    &amp;&amp; ballotStates[nodeID].h.counter &lt; ballotStates[nodeID].p.counter)
+                || (ballotStates[nodeID].pp.counter != 0
+                    &amp;&amp; ballotStates[nodeID].h.value != ballotStates[nodeID].pp.value
+                    &amp;&amp; ballotStates[nodeID].h.counter &lt; ballotStates[nodeID].pp.counter))) {
+            ballotStates[nodeID].c.counter = 0;
+            ballotStates[nodeID].c.value = NULL;
+            hasNewMessage = hasNewMessage | true;
+        }
+    }
+
+    // quorum threshold check for accept prepare ballots (attemptConfirmPrepare)
+    if (ballotStates[nodeID].p.counter != 0) {
+        hasNewConfirmedPrepare = attemptConfirmPrepare();
+
+        if (hasNewConfirmedPrepare) {
+            // update h or c
+            if (confirmedHBallot.counter != 0) {
+                ballotStates[nodeID].h.counter = confirmedHBallot.counter;
+                ballotStates[nodeID].h.value = confirmedHBallot.value;
+                nominationEnds[nodeID] = true;
+                if (ballotStates[nodeID].c.counter == 0
+                    &amp;&amp; (ballotStates[nodeID].p.counter == 0
+                        || !(ballotStates[nodeID].p.value != confirmedHBallot.value
+                            &amp;&amp; ballotStates[nodeID].p.counter &lt;= confirmedHBallot.counter))
+                    &amp;&amp; (ballotStates[nodeID].pp.counter == 0
+                        || !(ballotStates[nodeID].pp.value != confirmedHBallot.value
+                            &amp;&amp; ballotStates[nodeID].pp.counter &lt;= confirmedHBallot.counter))
+                    &amp;&amp; (ballotStates[nodeID].b.counter &lt; confirmedHBallot.counter
+                        || (ballotStates[nodeID].b.counter == confirmedHBallot.counter
+                            &amp;&amp; ballotStates[nodeID].b.value &lt;= confirmedHBallot.value))) {
+                    ballotStates[nodeID].c.counter = confirmedHBallot.counter;
+                    ballotStates[nodeID].c.value = confirmedHBallot.value;
+                }
+                hasNewMessage = hasNewMessage | true;
+            }
+
+            // bump b if required
+            if (ballotStates[nodeID].b.counter == 0
+                || (ballotStates[nodeID].b.counter &lt; ballotStates[nodeID].h.counter
+                    || (ballotStates[nodeID].b.counter == ballotStates[nodeID].h.counter
+                        &amp;&amp; ballotStates[nodeID].b.value &lt; ballotStates[nodeID].h.value))) {
+                ballotStates[nodeID].b.counter = ballotStates[nodeID].h.counter;
+                ballotStates[nodeID].b.value = ballotStates[nodeID].h.value;
+                hasNewMessage = hasNewMessage | true;
+            }
+        }
+    }
+
+    // blocking threshold check for accept commit ballots (attemptAcceptCommit)
+    // quorum threshold check for vote commit ballots (attemptAcceptCommit)
+    if (ballotStates[newMessageNode].h.counter != 0) {
+        newMessageBallots[0].counter = ballotStates[newMessageNode].h.counter;
+        if (ballotStates[newMessageNode].curState == SCPExternalize) {
+            newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
+        }
+        else {
+            newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        }
+
+        hasNewAcceptedCommit = attemptAcceptCommit();
+
+        if (hasNewAcceptedCommit) {
+            if (acceptedCounterC == 0) {
+                acceptedCounterC = acceptedCounterH;
+            }
+
+            nominationEnds[nodeID] = true;
+
+            ballotStates[nodeID].c.counter = acceptedCounterC;
+            ballotStates[nodeID].c.value = newMessageBallots[0].value;
+            ballotStates[nodeID].h.counter = acceptedCounterH;
+            ballotStates[nodeID].h.value = newMessageBallots[0].value;
+            ballotStates[nodeID].curState = SCPCommit;
+            ballotStates[nodeID].pp.counter = 0;
+            ballotStates[nodeID].pp.value = NULL;
+
+            hasNewMessage = hasNewMessage | true;
+        }
+    }
+
+    // Clear the message
+    ballotMessagesFromTo[newMessageNode][nodeID] = false;
+
+    // Broadcast a new message
+    if (hasNewMessage) {
+        for (i=0; i&lt;curNodes; i++) {
+            if (outboundNodes[nodeID][i] != NULL
+                &amp;&amp; isParticipant(outboundNodes[nodeID][i])
+                &amp;&amp; outboundNodes[nodeID][i] != nodeID) {
+                ballotMessagesFromTo[nodeID][outboundNodes[nodeID][i]] = true;
+            }
+        }
+    }
+}
+
+void processMessageCommit() {
+    int[0,N] i;
+    int[0,VBITS] j;
+    bool hasNewAcceptedPrepare = false;
+    bool hasNewAcceptedCommit = false;
+    bool hasNewConfirmedCommit = false;
+    bool hasNewMessage = false;
+
+    newMessageNode = nodeID;
+    for (i=0; i&lt;curNodes; i++) {
+        if (inboundNodes[nodeID][i] != NULL
+            &amp;&amp; isParticipant(inboundNodes[nodeID][i])
+            &amp;&amp; ballotMessagesFromTo[inboundNodes[nodeID][i]][nodeID]) {
+            newMessageNode = inboundNodes[nodeID][i];
+        }
+    }
+
+    // blocking threshold check for b.counter
+
+    // blocking threshold check for accept prepare ballots (attemptAcceptPrepare)
+    // quorum threshold check for vote prepare ballots (attemptAcceptPrepare)
+    hasNewAcceptedPrepare = attemptAcceptPrepare();
+
+    if (hasNewAcceptedPrepare) {
+        // update p or pp
+        if (ballotStates[nodeID].p.counter == 0) {
+            ballotStates[nodeID].p.counter = acceptedBallot.counter;
+            ballotStates[nodeID].p.value = acceptedBallot.value;
+            hasNewMessage = hasNewMessage | true;
+        }
+        else {
+            if (ballotStates[nodeID].p.counter &lt; acceptedBallot.counter
+                || (ballotStates[nodeID].p.counter == acceptedBallot.counter
+                    &amp;&amp; ballotStates[nodeID].p.value &lt; acceptedBallot.value)) {
+                if (ballotStates[nodeID].p.value != acceptedBallot.value) {
+                    ballotStates[nodeID].pp.counter = ballotStates[nodeID].p.counter;
+                    ballotStates[nodeID].pp.value = ballotStates[nodeID].p.value;
+                }
+                ballotStates[nodeID].p.counter = acceptedBallot.counter;
+                ballotStates[nodeID].p.value = acceptedBallot.value;
+                hasNewMessage = hasNewMessage | true;
+            }
+            else if (ballotStates[nodeID].p.counter &gt; acceptedBallot.counter
+                || (ballotStates[nodeID].p.counter == acceptedBallot.counter
+                    &amp;&amp; ballotStates[nodeID].p.value &gt; acceptedBallot.value)) {
+                if (ballotStates[nodeID].pp.counter == 0
+                    || (ballotStates[nodeID].pp.counter &lt; acceptedBallot.counter
+                        || (ballotStates[nodeID].pp.counter == acceptedBallot.counter
+                            &amp;&amp; ballotStates[nodeID].pp.value &lt; acceptedBallot.value))) {
+                    if (ballotStates[nodeID].p.value != acceptedBallot.value) {
+                        ballotStates[nodeID].pp.counter = acceptedBallot.counter;
+                        ballotStates[nodeID].pp.value = acceptedBallot.value;
+                        hasNewMessage = hasNewMessage | true;
+                    }
+                }
+            }
+        }
+    }
+
+    // blocking threshold check for accept commit ballots (attemptAcceptCommit)
+    // quorum threshold check for vote commit ballots (attemptAcceptCommit)
+    if (ballotStates[newMessageNode].h.counter != 0) {
+        newMessageBallots[0].counter = ballotStates[newMessageNode].h.counter;
+        if (ballotStates[newMessageNode].curState == SCPExternalize) {
+            newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
+        }
+        else {
+            newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        }
+
+        hasNewAcceptedCommit = attemptAcceptCommit();
+
+        if (hasNewAcceptedCommit) {
+            if (acceptedCounterC == 0) {
+                acceptedCounterC = acceptedCounterH;
+            }
+
+            ballotStates[nodeID].c.counter = acceptedCounterC;
+            ballotStates[nodeID].c.value = newMessageBallots[0].value;
+            ballotStates[nodeID].h.counter = acceptedCounterH;
+            ballotStates[nodeID].h.value = newMessageBallots[0].value;
+            ballotStates[nodeID].curState = SCPCommit;
+            ballotStates[nodeID].pp.counter = 0;
+            ballotStates[nodeID].pp.value = NULL;
+            hasNewMessage = hasNewMessage | true;
+        }
+    }
+
+    // quorum threshold check for accept commit ballots (attemptConfirmCommit)
+    if (ballotStates[newMessageNode].curState != SCPPrepare) {
+        newMessageBallots[0].counter = ballotStates[newMessageNode].h.counter;
+        if (ballotStates[newMessageNode].curState == SCPExternalize) {
+            newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
+        }
+        else {
+            newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        }
+
+        hasNewConfirmedCommit = attemptConfirmCommit();
+
+        if (hasNewConfirmedCommit) {
+            if (acceptedCounterC == 0) {
+                acceptedCounterC = acceptedCounterH;
+            }
+
+            ballotStates[nodeID].c.counter = acceptedCounterC;
+            ballotStates[nodeID].c.value = newMessageBallots[0].value;
+            ballotStates[nodeID].h.counter = acceptedCounterH;
+            ballotStates[nodeID].h.value = newMessageBallots[0].value;
+            ballotStates[nodeID].curState = SCPExternalize;
+            n_timerArmed = false;
+            hasNewMessage = hasNewMessage | true;
+        }
+    }
+
+    // Clear messages
+    ballotMessagesFromTo[newMessageNode][nodeID] = false;
+
+    // Broadcast a new message
+    if (hasNewMessage) {
+        for (i=0; i&lt;curNodes; i++) {
+            if (outboundNodes[nodeID][i] != NULL
+                &amp;&amp; isParticipant(outboundNodes[nodeID][i])
+                &amp;&amp; outboundNodes[nodeID][i] != nodeID) {
+                ballotMessagesFromTo[nodeID][outboundNodes[nodeID][i]] = true;
+            }
+        }
+    }
+}
+
+void processMessage(int curState) {
+    if (curState == SCPPrepare) {
+        processMessagePrepare();
+    }
+    else if (curState == SCPCommit) {
+        processMessageCommit();
+    }
+}
+
+void addExternalizedInputs(int value){
+    int[0,V] i;
+    bool isExternalized = false;
+
+    for(i=0; i&lt;V; i++){
+        if(externalizedInputs[i] == value)
+            isExternalized = true;
+    }
+
+    if(!isExternalized){
+        for(i=0; i&lt;V; i++){
+            if(externalizedInputs[i] == NULL){
+                externalizedInputs[i] = value;
+                return;
+            }
+        }
+    }
+}
+
+void clearInputs() {
+    int[0,V] j;
+    int[0,VBITS+1] curBit;
+    int[NULL,VBITS] curOutput = outputValues[nodeID][slotCur];
+
+    curBit = 1;
+    do {
+        if (curOutput % 2) {
+            for (j=0; j&lt;V; j++) {
+                if (higherlayerInput[nodeID][j] != NULL
+                    &amp;&amp; higherlayerInput[nodeID][j] == curBit) {
+                    addExternalizedInputs(higherlayerInput[nodeID][j]);
+                    higherlayerInput[nodeID][j] = NULL;
+                }
+            }
+        }
+        curBit *= 2;
+        curOutput /= 2;
+    } while (curOutput != 0);
+}
+
+void doExternalize() {
+    nominationEnds[nodeID] = true;
+    outputValues[nodeID][slotCur] = ballotStates[nodeID].c.value;
+    clearInputs();
+}
+
+bool hasNewBallotMessages() {
+    int[0,N] i;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if (inboundNodes[nodeID][i] != NULL
+            &amp;&amp; isParticipant(inboundNodes[nodeID][i])
+            &amp;&amp; ballotMessagesFromTo[inboundNodes[nodeID][i]][nodeID]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool hasGEbCounter() {
+    int[0,N] i;
+    int[NULL,N] cur;
+
+    if (ballotStates[nodeID].curState == SCPExternalize)
+        return false;
+
+    for (i=0; i&lt;curNodes; i++) {
+        if ((cur = qs[nodeID].validators[i]) != NULL
+            &amp;&amp; cur != nodeID
+            &amp;&amp; isParticipant(cur)
+            &amp;&amp; ballotStates[cur].b.counter &gt;= ballotStates[nodeID].b.counter) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool hasHigherlayerInput() {
+    int[0,N] i;
+    int[0,V] j;
+
+    for (i=0; i&lt;curNodes; i++) {
+        for (j=0; j&lt;V; j++) {
+            if (higherlayerInput[i][j] != NULL) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void broadcastExternalizeMessage() {
+    int[0,N] i;
+
+    n_timerArmed = false;
+    for (i=0; i&lt;curNodes; i++) {
+        if (outboundNodes[nodeID][i] != NULL
+            &amp;&amp; isParticipant(outboundNodes[nodeID][i])
+            &amp;&amp; outboundNodes[nodeID][i] != nodeID
+            &amp;&amp; ballotStates[outboundNodes[nodeID][i]].curState != SCPExternalize) {
+            ballotMessagesFromTo[nodeID][outboundNodes[nodeID][i]] = true;
+        }
+    }
+}
+</declaration>
+		<location id="id11" x="-1428" y="-816">
+			<name x="-1438" y="-850">BallotEnds</name>
+		</location>
+		<location id="id12" x="-909" y="-816">
+			<name x="-952" y="-850">Externalize</name>
+		</location>
+		<location id="id13" x="-714" y="-501">
+			<name x="-697" y="-501">Commit</name>
+		</location>
+		<location id="id14" x="-900" y="-348">
+			<name x="-934" y="-332">TimerArmed</name>
+		</location>
+		<location id="id15" x="-909" y="-654">
+			<name x="-901" y="-680">MessageProcessed</name>
+		</location>
+		<location id="id16" x="-1096" y="-501">
+			<name x="-1164" y="-535">Prepare</name>
+		</location>
+		<location id="id17" x="-1266" y="-501">
+			<name x="-1276" y="-535">Start</name>
+		</location>
+		<init ref="id17"/>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-765" y="-348">n_clockBCounter &gt; 50
+&amp;&amp; ballotStates[nodeID].curState == SCPExternalize</label>
+			<label kind="assignment" x="-765" y="-314">broadcastExternalizeMessage()</label>
+			<nail x="-399" y="-348"/>
+			<nail x="-399" y="-816"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-1411" y="-348">outputValues[nodeID][slotCur] != NULL</label>
+			<label kind="assignment" x="-1411" y="-331">armTimer()</label>
+			<nail x="-1428" y="-348"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-1394" y="-790">outputValues[nodeID][slotCur] == NULL
+&amp;&amp; nominatedValues[nodeID][0] != NULL</label>
+			<label kind="assignment" x="-1394" y="-756">initBallotState()</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-943" y="-782">hasGEbCounter() == false
+&amp;&amp; !n_timerArmed
+&amp;&amp; ballotStates[nodeID].curState == SCPExternalize</label>
+			<label kind="synchronisation" x="-943" y="-705">externalized[nodeID]!</label>
+			<label kind="assignment" x="-943" y="-722">doExternalize()</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-756" y="-688">hasGEbCounter() == false
+&amp;&amp; !n_timerArmed
+&amp;&amp; ballotStates[nodeID].curState == SCPCommit</label>
+			<nail x="-714" y="-654"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-1139" y="-680">hasGEbCounter() == false
+&amp;&amp; !n_timerArmed
+&amp;&amp; ballotStates[nodeID].curState == SCPPrepare</label>
+			<nail x="-1096" y="-654"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-909" y="-586">hasNewBallotMessages()
+&amp;&amp; n_clockBCounter &lt;= ballotStates[nodeID].b.counter + 1
+&amp;&amp; ballotStates[nodeID].curState != SCPExternalize</label>
+			<label kind="assignment" x="-909" y="-535">processMessage(ballotStates[nodeID].curState)</label>
+			<nail x="-824" y="-501"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-858" y="-433">n_clockBCounter &gt; ballotStates[nodeID].b.counter + 1
+&amp;&amp; ballotStates[nodeID].curState == SCPCommit</label>
+			<label kind="assignment" x="-858" y="-399">timerFired()</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-875" y="-629">hasNewBallotMessages()</label>
+			<label kind="assignment" x="-875" y="-612">processMessageCommit()</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-1283" y="-425">n_clockBCounter &gt; ballotStates[nodeID].b.counter + 1
+&amp;&amp; ballotStates[nodeID].curState == SCPPrepare</label>
+			<label kind="assignment" x="-1011" y="-391">timerFired()</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-1003" y="-501">hasGEbCounter()
+|| (n_timerArmed &amp;&amp; n_clockBCounter &lt;= ballotStates[nodeID].b.counter + 1)</label>
+			<label kind="assignment" x="-1003" y="-459">armTimer()</label>
+			<nail x="-986" y="-501"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-1088" y="-620">hasNewBallotMessages()</label>
+			<label kind="assignment" x="-1088" y="-603">processMessagePrepare()</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-1300" y="-484">nominatedValues[nodeID][0] != NULL</label>
+			<label kind="assignment" x="-1215" y="-467">initBallotState()</label>
+		</transition>
+	</template>
+	<system>NN0 = NodeNomination(0);
+NB0 = NodeBallot(0);
+
+NN1 = NodeNomination(1);
+NB1 = NodeBallot(1);
+
+NN2 = NodeNomination(2);
+NB2 = NodeBallot(2);
+
+NN3 = NodeNomination(3);
+NB3 = NodeBallot(3);
+
+NN4 = NodeNomination(4);
+NB4 = NodeBallot(4);
+
+NN5 = NodeNomination(5);
+NB5 = NodeBallot(5);
+
+NN6 = NodeNomination(6);
+NB6 = NodeBallot(6);
+
+NN7 = NodeNomination(7);
+NB7 = NodeBallot(7);
+
+NN8 = NodeNomination(8);
+NB8 = NodeBallot(8);
+
+NN9 = NodeNomination(9);
+NB9 = NodeBallot(9);
+
+NN10 = NodeNomination(10);
+NB10 = NodeBallot(10);
+
+NN11 = NodeNomination(11);
+NB11 = NodeBallot(11);
+
+NF0 = NodeFaulty();
+
+NF1 = NodeFaulty();
+
+NF2 = NodeFaulty();
+
+NF3 = NodeFaulty();
+
+NS = NodeSlot();
+
+// no fault
+system NN0, NB0, NN1, NB1, NN2, NB2, NN3, NB3, NN4, NB4, NN5, NB5, NN6, NB6, NN7, NB7, NN8, NB8, NN9, NB9, NN10, NB10, NN11, NB11, NS;
+// 1 fault
+//system NF0, NN1, NB1, NN2, NB2, NN3, NB3, NN4, NB4, NN5, NB5, NN6, NB6, NN7, NB7, NN8, NB8, NN9, NB9, NN10, NB10, NN11, NB11, NS;
+//system NN0, NB0, NN1, NB1, NN2, NB2, NN3, NB3, NN4, NB4, NN5, NB5, NN6, NB6, NN7, NB7, NN8, NB8, NN9, NB9, NN10, NB10, NF0, NS;
+// 3 faults
+//system NF0, NF1, NF2, NN3, NB3, NN4, NB4, NN5, NB5, NN6, NB6, NN7, NB7, NN8, NB8, NN9, NB9, NN10, NB10, NN11, NB11, NS;
+// 4 faults
+//system NF0, NF1, NF2, NF3, NN4, NB4, NN5, NB5, NN6, NB6, NN7, NB7, NN8, NB8, NN9, NB9, NN10, NB10, NN11, NB11, NS;
+</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; (deadlock &amp;&amp; forall (i : int[0,SLOTMAX-1]) (outputValues[0][i] == NULL || (forall (j : int[0,N-2]) outputValues[j][i] == outputValues[j+1][i])))
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] slotCur == 0 || (outputValues[0][slotCur-1] != NULL &amp;&amp; (forall (i : int[0,N-2]) outputValues[i][slotCur-1] == outputValues[i+1][slotCur-1]))
+			</formula>
+			<comment>
+			</comment>
+		</query>
+	</queries>
+</nta>

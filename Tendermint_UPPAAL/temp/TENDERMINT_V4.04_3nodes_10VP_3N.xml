@@ -1,0 +1,817 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>const int N = 3;
+const int F = 0;
+typedef int[0, N-F-1] n_id;
+
+const int Block_size = 3;
+const int Max_round = 5;
+typedef int[0, Block_size-1] h_id;
+
+int[0, Block_size+1] slotCur = 0;
+const int Nil = 0;
+
+const int TICK_Count = 10;
+const int TICK_N = 4;
+const int MAXTIME = 10;
+broadcast chan tickAdvance[TICK_N];
+
+broadcast chan slotSuccess;
+broadcast chan slotFail;
+broadcast chan slotUnknown;
+broadcast chan slotStarted[Block_size+1];
+
+//Step
+const int step_init = 0;
+const int step_propose = 1;
+const int step_prevote = 2;
+const int step_prevotewait = 3;
+const int step_precommit = 4;
+const int step_precommitwait = 5;
+const int step_commit = 6;
+
+//timeout
+const int timeoutPropose = 6;
+const int timeoutProposeDelta = 1;
+const int timeoutPrevote = 2;
+const int timeoutPrevoteDelta = 1;
+const int timeoutPrecommit = 2;
+const int timeoutPrecommitDelta = 1;
+const int timeoutCommit = 2;
+
+//BlockChain
+typedef struct {
+    int[-1, Block_size] Height;
+    int[-1, N] Slot[Block_size]; 
+}BFTChain;
+
+//Node struct
+typedef struct{
+    int[9, 10] VotingPower;
+    int Priority;
+}BFTValidator;
+
+//Node message
+typedef struct{
+    int[-1, N] Propose[Max_round];
+    int[-1, N] Prevote[Max_round];
+    int[-1, N] Precommit[Max_round];
+}BFTMsg;
+
+//Node
+typedef struct{
+    int[0, 6] Step;
+    int[0, MAXTIME] LocalTime;
+    int[0, Block_size] Height;
+    int[0, Max_round+1] Round;
+    int[-1, N] LastLockRound;
+    int[-1, N] LockedValue;
+    int[-1, Max_round+1] PoLCRound;
+    int[-1, N] PoLCValue;
+    int[-1, N] ProposalValue;
+    BFTValidator Validator;
+    BFTChain BlockChain;
+    BFTMsg Message;
+}BFTNode;
+
+//initialize
+int[0, N-1] Proposal_node = 0;
+
+BFTNode Node[N] = {
+    {
+        step_init, 0, 0, 0, -1, -1, -1, -1, -1, 
+        {10, 0},
+        {-1, {-1,-1,-1}}, 
+        {{-1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1}}
+    },
+    {
+        step_init, 0, 0, 0, -1, -1, -1, -1, -1, 
+        {10, 0}, 
+        {-1, {-1,-1,-1}}, 
+        {{-1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1}}
+    },
+    {
+        step_init, 0, 0, 0, -1, -1, -1, -1, -1, 
+        {10, 0}, 
+        {-1, {-1,-1,-1}}, 
+        {{-1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1}}
+    }
+};
+</declaration>
+	<template>
+		<name>NodeTick</name>
+		<declaration>typedef int[0,TICK_N-1] tick_id;
+int tickCounters[TICK_N] =
+    {0, 0, 0, 0};
+
+bool tickAllowed(const tick_id id) {
+    if (tickCounters[id] &lt; TICK_Count) {
+        return true;
+    }
+    return false;
+}
+
+bool tickUpdateDone() {
+    for (t : tick_id) {
+        if (tickAllowed(t)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void tickUpdate(const tick_id id) {
+    tickCounters[id]++;
+
+    if (tickUpdateDone()) {
+        for (n : n_id) {
+            tickCounters[n] = 0;
+        }
+    }
+}
+</declaration>
+		<location id="id0" x="-365" y="-8">
+			<name x="-348" y="-33">StartTick</name>
+		</location>
+		<location id="id1" x="34" y="-8">
+			<name x="-59" y="-33">TickStarted</name>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="195" y="-101">tickAllowed(3)</label>
+			<label kind="synchronisation" x="314" y="-101">tickAdvance[3]!</label>
+			<label kind="assignment" x="434" y="-101">tickUpdate(3)</label>
+			<nail x="178" y="-109"/>
+			<nail x="203" y="-67"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="162" y="-160">tickAllowed(2)</label>
+			<label kind="synchronisation" x="280" y="-161">tickAdvance[2]!</label>
+			<label kind="assignment" x="399" y="-161">tickUpdate(2)</label>
+			<nail x="136" y="-160"/>
+			<nail x="170" y="-126"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="111" y="-203">tickAllowed(1)</label>
+			<label kind="synchronisation" x="221" y="-204">tickAdvance[1]!</label>
+			<label kind="assignment" x="340" y="-204">tickUpdate(1)</label>
+			<nail x="94" y="-194"/>
+			<nail x="128" y="-169"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="51" y="-237">tickAllowed(0)</label>
+			<label kind="synchronisation" x="178" y="-238">tickAdvance[0]!</label>
+			<label kind="assignment" x="297" y="-238">tickUpdate(0)</label>
+			<nail x="51" y="-211"/>
+			<nail x="85" y="-203"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-347" y="128">slotFail?</label>
+			<nail x="34" y="145"/>
+			<nail x="-365" y="145"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-347" y="179">slotUnknown?</label>
+			<nail x="34" y="196"/>
+			<nail x="-365" y="196"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-347" y="-245">slotSuccess?</label>
+			<nail x="34" y="-228"/>
+			<nail x="-365" y="-228"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-348" y="-8">slotStarted[slotCur]?</label>
+		</transition>
+	</template>
+	<template>
+		<name>NodeSlot</name>
+		<parameter>const h_id slotID</parameter>
+		<declaration>bool checkCommit () {
+    int pivot = Node[0].BlockChain.Slot[slotCur];
+    for (i: n_id){
+        if (pivot != Node[i].BlockChain.Slot[slotCur]){
+            return false;
+        }
+    }
+    return true;
+}</declaration>
+		<location id="id2" x="-280" y="-8">
+		</location>
+		<location id="id3" x="-68" y="-8">
+		</location>
+		<location id="id4" x="340" y="-187">
+			<name x="297" y="-161">SlotUnknown</name>
+		</location>
+		<location id="id5" x="340" y="-8">
+			<name x="306" y="17">SlotSuccess</name>
+		</location>
+		<location id="id6" x="340" y="178">
+			<name x="314" y="195">SlotFail</name>
+		</location>
+		<location id="id7" x="68" y="-8">
+		</location>
+		<init ref="id2"/>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="127" y="144">!checkCommit ()</label>
+			<label kind="synchronisation" x="127" y="161">slotFail!</label>
+			<label kind="assignment" x="127" y="178">slotCur++</label>
+			<nail x="67" y="178"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id5"/>
+			<label kind="guard" x="127" y="0">checkCommit ()</label>
+			<label kind="synchronisation" x="127" y="17">slotSuccess!</label>
+			<label kind="assignment" x="127" y="34">slotCur++</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-51" y="-42">forall (i: n_id) Node[i].BlockChain.Slot[slotCur] != -1</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-34" y="-229">exists (i: n_id) Node[i].Round &gt;= Max_round</label>
+			<label kind="synchronisation" x="-34" y="-212">slotUnknown!</label>
+			<nail x="-68" y="-187"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-246" y="-59">slotCur == slotID</label>
+			<label kind="synchronisation" x="-246" y="-42">slotStarted[slotCur]!</label>
+		</transition>
+	</template>
+	<template>
+		<name>NodeNormal</name>
+		<parameter>const n_id nodeID</parameter>
+		<declaration>void broadcastMsg (int step, int height, int Round, int value){
+    if (step == step_propose){
+        Node[nodeID].Message.Propose[Round] = value;
+    }
+
+    else if (step == step_prevote){
+        Node[nodeID].Message.Prevote[Round] = value;
+    }
+
+    else if (step == step_precommit){
+        Node[nodeID].Message.Precommit[Round] = value;
+    }
+    
+    return;
+}
+
+
+bool is23Any (int step, int height, int Round){
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Node[i].Validator.VotingPower;
+    }
+    
+    if (step == step_prevote){
+        for (index: int[0, N-1]){
+            if (Node[index].Height == height){
+                if (Node[index].Message.Prevote[Round] &gt; -1){
+                    sum_voting_power = sum_voting_power + Node[index].Validator.VotingPower;
+                }
+            }
+        }
+    }
+
+    else if (step == step_precommit){
+        for (index: int[0, N-1]){
+            if (Node[index].Height == height){
+                if (Node[index].Message.Precommit[Round] &gt; -1){
+                    sum_voting_power = sum_voting_power + Node[index].Validator.VotingPower;
+                }
+            } 
+        }
+    }
+
+    if (1000 * sum_voting_power &gt; 667 * total_voting_power){
+        return true;
+    }
+
+    return false;
+}
+
+int is23MajBlock (int step, int height, int Round){
+    int pivot_value = 0;
+    int total_voting_power = 0;
+    int sum_voting_power = 0;
+
+    for (i: int[0, N-1]){
+        total_voting_power = total_voting_power + Node[i].Validator.VotingPower;
+    }
+    
+    if (step == step_prevote){
+        for (index: int[0, N-1]){
+            if (Node[index].Height == height){
+                pivot_value = Node[index].Message.Prevote[Round];
+            
+                for (pivot_index: int[0, N-1]){
+                    if (Node[pivot_index].Height == height){
+                        if (Node[pivot_index].Message.Prevote[Round] == pivot_value){
+                            sum_voting_power = sum_voting_power + Node[pivot_index].Validator.VotingPower;
+                        }
+                    }
+                }
+
+                if (1000 * sum_voting_power &gt; 667 * total_voting_power){
+                    return pivot_value;
+                }
+                
+                sum_voting_power = 0;
+            }
+        }
+    }
+
+    else if (step == step_precommit){
+        for (index: int[0, N-1]){
+            if (Node[index].Height == height){
+                pivot_value = Node[index].Message.Precommit[Round];
+            
+                for (pivot_index: int[0, N-1]){
+                    if (Node[pivot_index].Height == height){
+                        if (Node[pivot_index].Message.Precommit[Round] == pivot_value){
+                            sum_voting_power = sum_voting_power + Node[pivot_index].Validator.VotingPower;
+                        }
+                    }
+                }
+
+                if (1000 * sum_voting_power &gt; 667 * total_voting_power){
+                    return pivot_value;
+                }
+                
+                sum_voting_power = 0;
+            }
+        }
+    }
+
+    return pivot_value;
+}
+
+bool is23Maj (int step, int height, int Round){
+    int value = is23MajBlock (step, height, Round);
+    if (value &gt; 0){
+        return true;
+    }
+    return false;
+}
+
+void resetState () {
+    Node[nodeID].LocalTime = 0;
+    Node[nodeID].LastLockRound = -1;
+    Node[nodeID].LockedValue = -1;
+    Node[nodeID].PoLCRound = -1;
+    Node[nodeID].PoLCValue = -1;
+
+    for (index: int[0, N-1]) {
+        Node[nodeID].Message.Propose[index] = -1;
+        Node[nodeID].Message.Prevote[index] = -1;
+        Node[nodeID].Message.Precommit[index] = -1;
+    }
+}
+
+void proposer_selection () {
+    int sum_p = 0;
+    int total_sum = 0;
+    int max_p = 0;
+    int min_p = 0;
+
+    for (i: int[0, N-1]){
+        total_sum += Node[i].Validator.VotingPower;
+    }
+
+    //caculate max min
+    for (i: int[0, N-1]){
+        sum_p += Node[i].Validator.Priority;
+        if (max_p &lt; Node[i].Validator.Priority){
+            max_p = Node[i].Validator.Priority;
+        }
+        if (min_p &gt; Node[i].Validator.Priority){
+            min_p = Node[i].Validator.Priority;
+        }
+    }
+    
+    //update scale
+    if ((max_p - min_p) &gt; 2 * total_sum){
+        int diff = max_p - min_p;
+        int double_sum = 2 * total_sum;
+        int p_scale = diff / double_sum;
+        for (i: int[0, N-1]){
+            Node[i].Validator.Priority = Node[i].Validator.Priority/p_scale;
+        }
+    }
+
+    //set center to zero
+    sum_p = 0;
+    for (i: int[0, N-1]){
+        sum_p += Node[i].Validator.Priority;
+    }
+    for (i: int[0, N-1]){
+        Node[i].Validator.Priority -= sum_p/N;
+    }
+
+    //caculate proposal node
+    for (i: int[0, N-1]){
+        Node[i].Validator.Priority += Node[i].Validator.VotingPower;
+    }
+
+    sum_p = 0;
+    for (i: int[0, N-1]){
+        sum_p += Node[i].Validator.Priority;
+    }
+
+    max_p = Node[nodeID].Validator.Priority;
+    Proposal_node = nodeID;
+    for (i: int[0, N-1]){
+        if (max_p &lt; Node[i].Validator.Priority){
+            max_p = Node[i].Validator.Priority;
+            Proposal_node = i;
+        }
+    }
+    Node[Proposal_node].Validator.Priority -= sum_p;
+    return;
+}
+
+void newStep (int temp){
+    Node[nodeID].Step = (Node[nodeID].Step + temp) % 7;
+    return;
+}
+
+bool handleTimeout (int timeoutState, int Round){
+    if (timeoutState == step_propose){
+        if (Node[nodeID].LocalTime &gt; timeoutPropose + Round * timeoutProposeDelta) {
+            //Node[nodeID].TimeoutCount += 1;
+            return true;
+        }
+    }
+
+    else if (timeoutState == step_prevotewait){
+        if (Node[nodeID].LocalTime &gt; timeoutPrevote + Round * timeoutPrevoteDelta) {
+            //Node[nodeID].TimeoutCount += 1;
+            return true;
+        }
+    }
+
+    else if (timeoutState == step_precommitwait){
+        if (Node[nodeID].LocalTime &gt; timeoutPrecommit + Round * timeoutPrecommitDelta) {
+            //Node[nodeID].TimeoutCount += 1;
+            return true;
+        }
+    }
+
+    else if (timeoutState == step_commit){
+        if (Node[nodeID].LocalTime &gt; timeoutCommit) {
+            //Node[nodeID].TimeoutCount += 1;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void enterNewRound (int height, int Round){
+    Node[nodeID].Round = Node[nodeID].Round + 1;
+    return;
+}
+
+bool isProposal (){
+    if (nodeID == Proposal_node){
+        return true;
+    }
+    return false;
+}
+
+int createProposalBlock (){
+    int value;
+    //value = (nodeID + 1) * (Node[nodeID].Height + 1) + Node[nodeID].Round;
+    value = nodeID;
+    return value;
+}
+
+void enterPropose (int height, int Round){
+    if (isProposal()){
+        broadcastMsg(step_propose, height, Round, createProposalBlock());
+    }
+    else {
+        int value = Node[nodeID].Message.Propose[Node[nodeID].Round];
+        Node[nodeID].ProposalValue = value;
+    }
+    return;
+}
+
+void enterPrevote (int height, int Round){
+    if (Node[nodeID].LastLockRound != -1 &amp;&amp; Node[nodeID].PoLCValue != -1){
+        if (Node[nodeID].LastLockRound &lt; Node[nodeID].PoLCRound &lt; Node[nodeID].Round){
+            Node[nodeID].LastLockRound = -1;
+            Node[nodeID].LockedValue = -1;
+        }
+    }
+
+    if (Node[nodeID].LockedValue != -1){
+        broadcastMsg(step_prevote, height, Round, Node[nodeID].LockedValue);
+    }
+
+    else if (Node[nodeID].LockedValue == -1 &amp;&amp; Node[nodeID].ProposalValue != -1){
+        broadcastMsg(step_prevote, height, Round, Node[nodeID].ProposalValue);
+    }
+
+    else if (Node[nodeID].LockedValue == -1 &amp;&amp; Node[nodeID].ProposalValue == -1){
+        broadcastMsg(step_prevote, height, Round, Nil);
+    }
+    return;
+}
+
+void enterPrecommit (int height, int Round){
+    int value;
+    value = is23MajBlock (step_prevote, height, Round);
+    
+    if (value &gt; 0){
+        Node[nodeID].LockedValue = value;
+        Node[nodeID].LastLockRound = Node[nodeID].Round;
+        broadcastMsg(step_precommit, height, Round, value);
+    }
+
+    else if (value = 0){
+        Node[nodeID].LockedValue = -1;
+        Node[nodeID].LastLockRound = -1;
+        broadcastMsg(step_precommit, height, Round, Nil);
+    }
+
+    else if (value &lt; 0){
+        broadcastMsg(step_precommit, height, Round, Nil);
+    }
+    return;
+}
+
+void recieveRoutine (){
+    if (Node[nodeID].LocalTime &gt;= MAXTIME){
+        Node[nodeID].LocalTime = 0;
+    }
+
+    Node[nodeID].LocalTime = Node[nodeID].LocalTime + 1;
+    
+    if (Node[nodeID].Round &gt;= Max_round){
+        return;
+    }
+
+    if (Node[nodeID].Step == step_propose){
+        enterPropose (Node[nodeID].Height, Node[nodeID].Round);
+        
+        if (Node[nodeID].ProposalValue != -1){
+            newStep (1);
+            return;
+        }
+
+        else if (handleTimeout (Node[nodeID].Step, Node[nodeID].Round)){
+            Node[nodeID].ProposalValue = -1;
+            newStep (1);
+            return;
+        }
+    }
+
+    else if (Node[nodeID].Step == step_prevote) {
+        enterPrevote (Node[nodeID].Height, Node[nodeID].Round);
+        newStep (1);
+        return;
+    }    
+
+    else if (Node[nodeID].Step == step_prevotewait) {
+        if (is23MajBlock (Node[nodeID].Step-1, Node[nodeID].Height, Node[nodeID].Round) &gt; -1){
+            newStep (1);
+            return;
+        }
+
+        else if (is23Any (Node[nodeID].Step-1, Node[nodeID].Height, Node[nodeID].Round) || handleTimeout (Node[nodeID].Step, Node[nodeID].Round)) {
+            newStep (1);
+            return;
+        }
+    }
+
+    else if (Node[nodeID].Step == step_precommit) {
+        enterPrecommit (Node[nodeID].Height, Node[nodeID].Round);
+        newStep (1);
+        return;
+    }
+
+    else if (Node[nodeID].Step == step_precommitwait) {
+        if (is23MajBlock (Node[nodeID].Step-1, Node[nodeID].Height, Node[nodeID].Round) &gt; Nil){
+            newStep (1);
+            return;
+        }
+        
+        else if (is23MajBlock (Node[nodeID].Step-1, Node[nodeID].Height, Node[nodeID].Round) == Nil) {
+            newStep (3);
+            Node[nodeID].Round = Node[nodeID].Round + 1;
+            Node[nodeID].LocalTime = 0;
+            proposer_selection ();
+            return;
+        }
+    
+        else if (is23Any (Node[nodeID].Step-1, Node[nodeID].Height, Node[nodeID].Round) || handleTimeout (Node[nodeID].Step, Node[nodeID].Round)) {
+            newStep (3);
+            Node[nodeID].Round = Node[nodeID].Round + 1;
+            Node[nodeID].LocalTime = 0;
+            proposer_selection ();
+            return;
+        }
+    }
+
+    else if (Node[nodeID].Step == step_commit) {
+        int value = is23MajBlock (Node[nodeID].Step-2, Node[nodeID].Height, Node[nodeID].Round);
+
+        if (value &gt; Nil){
+            Node[nodeID].BlockChain.Slot[Node[nodeID].Height] = value;
+            newStep (2);
+            Node[nodeID].Round = 0;
+            Node[nodeID].Height = Node[nodeID].Height + 1;
+            proposer_selection ();
+            return;
+        }
+
+        else if (handleTimeout (Node[nodeID].Step, Node[nodeID].Round)){
+            newStep (2);
+            Node[nodeID].Round = Node[nodeID].Round + 1;
+            Node[nodeID].LocalTime = 0;  
+            proposer_selection ();  
+            return;
+        }
+    }
+}
+
+void startRoutine () {
+    if (Node[nodeID].Step == step_init) {
+        newStep (1);
+    }
+    return;
+}
+
+bool is_commit (int addr){
+    if (slotCur &gt;= Block_size) {
+        return true;
+    }
+    return Node[addr].BlockChain.Slot[slotCur] &gt; Nil;
+}
+
+
+
+</declaration>
+		<location id="id8" x="-255" y="-8">
+		</location>
+		<location id="id9" x="-34" y="-8">
+		</location>
+		<location id="id10" x="195" y="-8">
+		</location>
+		<init ref="id8"/>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="42" y="119">slotUnknown?</label>
+			<label kind="assignment" x="42" y="136">resetState ()</label>
+			<nail x="195" y="161"/>
+			<nail x="-255" y="161"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="42" y="42">slotFail?</label>
+			<label kind="assignment" x="42" y="59">resetState ()</label>
+			<nail x="195" y="85"/>
+			<nail x="-255" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-187" y="119">slotUnknown?</label>
+			<label kind="assignment" x="-187" y="136">resetState ()</label>
+			<nail x="-34" y="161"/>
+			<nail x="-255" y="161"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-187" y="42">slotFail?</label>
+			<label kind="assignment" x="-187" y="59">resetState ()</label>
+			<nail x="-34" y="85"/>
+			<nail x="-255" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-110" y="178">forall (i: n_id) is_commit (i)</label>
+			<label kind="synchronisation" x="-110" y="195">slotSuccess?</label>
+			<label kind="assignment" x="-110" y="212">resetState ()</label>
+			<nail x="195" y="239"/>
+			<nail x="-255" y="238"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="guard" x="17" y="-34">is_commit (nodeID)</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-212" y="-51">slotStarted[slotCur]?</label>
+			<label kind="assignment" x="-212" y="-34">startRoutine ()</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-85" y="-195">!is_commit (nodeID) &amp;&amp; Node[nodeID].Round &lt; Max_round+1</label>
+			<label kind="synchronisation" x="-85" y="-178">tickAdvance[nodeID]?</label>
+			<label kind="assignment" x="-85" y="-161">recieveRoutine ()</label>
+			<nail x="34" y="-136"/>
+			<nail x="-93" y="-136"/>
+		</transition>
+	</template>
+	<template>
+		<name>NodeFaulty</name>
+		<location id="id11" x="0" y="0">
+		</location>
+		<init ref="id11"/>
+	</template>
+	<system>system NodeTick, NodeSlot, NodeNormal, NodeFaulty;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; forall (i : h_id) NodeSlot(i).SlotSuccess</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; forall (i : h_id) NodeSlot(i).SlotFail</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; forall (i : h_id) NodeSlot(i).SlotUnknown</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>A[] forall (i : h_id) not NodeSlot(i).SlotFail</formula>
+			<comment>error comment
+
+			</comment>
+		</query>
+		<query>
+			<formula>A[] forall (i : h_id) not NodeSlot(i).SlotUnknown</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] forall (i : h_id) not (NodeSlot(i).SlotFail || NodeSlot(i).SlotUnknown)</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; exists (i : h_id) NodeSlot(i).SlotUnknown</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; exists (i : h_id) NodeSlot(i).SlotFail</formula>
+			<comment>
+			</comment>
+		</query>
+	</queries>
+</nta>
