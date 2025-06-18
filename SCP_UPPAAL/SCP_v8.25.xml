@@ -1,98 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
 <nta>
-	<declaration>
- 
-const int N = 2; // total number of nodes
-const int F = 0; // total number of faulty nodes
-typedef int[0,N-F-1] n_id; // node id (0 to n-f-1)
-typedef int[N-F,N-1] f_id; // fault node id (n-f to n-1)
-
+	<declaration>/// ----- ** GLOBAL CONSTANTS
 const int THR = 100; // quorum threshold number
+const int N = 3; // total number of nodes
+const int F = 1; // total number of faulty nodes
 
 // TODO: change the variable name to more relavant
 const int V = 1; // maximum number of values in nomination state
-typedef int[0,V-1] v_id; // value id (0 to v-1)
+
+const int INFINITY = 15;
+const int MAXCNT = 14;
+const int MAXGAP_PROTOCOL = 1;
 const bool NOVALUE[V] = // empty values (no values)
     {false};
 
 const int SLOTMAX = V-1; // slot max index
-typedef int[0,SLOTMAX] s_id;
 
-// ** global const values
-const int INFINITY = 15;
-const int MAXCNT = 14;
-const int MAXGAP_PROTOCOL = 1;
+
 
 // ** states for NominationBallot
 const int SCPPrepare = 0;
 const int SCPCommit = 1;
 const int SCPExternalize = 2;
 
-// ** channels
-chan sthNominated[N-F];     // info if s-th node nominated value or not
-chan nominationDone[N-F];   // info if s-th node nomination process is done or not
-// broadcast channels
-broadcast chan slotSuccess;
-broadcast chan slotFail;
-broadcast chan slotTimeout;
-broadcast chan slotStarted[SLOTMAX+1];
 
-const int totalParticipants[V] = {5};
+/// ------ ** TYPE DEFINITIONS
 
+typedef int[0,N-F-1] n_id; // node id (0 to n-f-1)
+typedef int[N-F,N-1] f_id; // fault node id (n-f to n-1)
+typedef int[0,V-1] v_id; // value id (0 to v-1)
+typedef int[0,SLOTMAX] s_id; // slot id
+// typedef int[0,N-F-1] t_id;
+typedef int[0,N-1] t_id; // tick id
 
 typedef struct {
     int[0,N] threshold;
     int[0,N] validators[N]; // reserving as many as N
 } SCPQuorumSlice;
 
-SCPQuorumSlice qs[V][N] =
-// the entire of nodes are in one quorum
-// {threshold, {validators[N]}}
-     {{{0, {0, 1}},
-       {0, {0, 1}}}};
-
-int[0,SLOTMAX] slotCur = 0; // current slot pointer
-
-// faulty nodes should not have any input values!
-bool higherlayerInput[N][V] =
-    {{true}, 
-     {true}};
-
-int[0,INFINITY] cur_round[N] =
-    {0, 0};
-
-int[0,INFINITY] cur_b_cnt[N] =
-    {0, 0};
-
-int[0,INFINITY] tickNomination[N] =
-    {0, 0};
-
-int[0,INFINITY] tickBallot[N] =
-    {0, 0};
-
-int[0,MAXGAP_PROTOCOL*2] protocolFlip[N] =
-    {0, 0};
-
-bool canTick[N] =
-    {true, true};
-
-// nomination (voted, accepted) state of a node
+// nomination
 typedef struct {
     bool voted[V];
     bool accepted[V];
 } SCPNominationState;
-SCPNominationState nominationStates[N] =
-    {{{false}, {false}},
-     {{false}, {false}}};
 
-bool nominatedValues[N][V] =
-    {{false},
-     {false}};
-
-bool ballotDone[N] =
-    {false, false};
-
+// ballot
 typedef struct {
     int[0,INFINITY] counter;
     bool value[V];
@@ -108,15 +61,111 @@ typedef struct {
 } SCPBallotState;
 SCPBallotState ballotStates[N];
 
-// check if valueL &amp;lt; valueR
-bool isLessValue(const bool &amp;amp;valueL[V], const bool &amp;amp;valueR[V]) {
+
+/// ------ ** Node configurations
+/// ------- - modify here after change N, F values
+
+// total participants involved for each value
+// used in Slot management
+const int totalParticipants[V] = {N};
+
+// faulty nodes should not have any input values!
+bool higherlayerInput[N][V] =
+    {{true},
+     {true},
+     {true}};
+
+SCPQuorumSlice qs[V][N] =
+// the entire of nodes are in one quorum
+// {threshold, {validators[N]}}
+     {{{0, {0, 1, 2}},
+       {0, {0, 1, 2}},
+       {0, {0, 1, 2}}}};
+
+
+int[0,INFINITY] cur_round[N] =
+    {0, 0, 0};
+
+int[0,INFINITY] cur_b_cnt[N] =
+    {0, 0, 0};
+
+int[0,INFINITY] tickNomination[N] =
+    {0, 0, 0};
+
+int[0,INFINITY] tickBallot[N] =
+    {0, 0, 0};
+
+int[0,MAXGAP_PROTOCOL*2] protocolFlip[N] =
+    {0, 0, 0};
+
+bool canTick[N] =
+    {true, true, true};
+
+
+SCPNominationState nominationStates[N] =
+    {{{false}, {false}},
+     {{false}, {false}},
+     {{false}, {false}}};
+
+bool nominatedValues[N][V] =
+    {{false},
+     {false},
+     {false}};
+
+bool ballotDone[N] =
+    {false, false, false};
+
+
+bool tickReady[N] =
+    {true, true, true};
+
+
+
+/// ----- ** CHANNELS
+// chan sthNominated[N-F];     // info if s-th node nominated value or not
+// chan nominationDone[N-F];   // info if s-th node nomination process is done or not
+chan sthNominated[N];
+chan nominationDone[N];
+
+// chan tickAdvanceBallot[N-F];
+chan tickAdvanceBallot[N];
+// chan tickAdvance[N-F];
+// chan tickAdvanceDone[N-F];
+chan tickAdvance[N];
+chan tickAdvanceDone[N];
+
+chan slotDone;
+
+/// broadcast channels
+broadcast chan slotSuccess;
+broadcast chan slotFail;
+broadcast chan slotTimeout;
+broadcast chan slotStarted[SLOTMAX+1];
+
+broadcast chan tickManagerStart;
+broadcast chan tickManagerStop;
+broadcast chan tickStart;
+broadcast chan tickStop;
+
+
+
+
+
+/// ----- ** VARIABLES
+int[0,SLOTMAX] slotCur = 0; // current slot pointer
+
+
+/// ------ ** METHODS
+bool isLessValue(const bool &amp;valueL[V], const bool &amp;valueR[V]) {
+    // check if valueL &lt; valueR
+
     int[-1, V-1] i;
 
-    for (i = V-1; i &amp;gt;= 0; i--) {
-        if (valueL[i] == false &amp;amp;&amp;amp; valueR[i] == true) {
+    for (i = V-1; i &gt;= 0; i--) {
+        if (valueL[i] == false &amp;&amp; valueR[i] == true) {
             return true;
         }
-        else if (valueL[i] == true &amp;amp;&amp;amp; valueR[i] == false) {
+        else if (valueL[i] == true &amp;&amp; valueR[i] == false) {
             return false;
         }
     }
@@ -124,7 +173,6 @@ bool isLessValue(const bool &amp;amp;valueL[V], const bool &amp;amp;valueR[V]) {
 }
 
 int getTotalValidators(const int[0,N] curNodeID) {
-    // TODO: modify the method name to getTotalValidators
     /*
         parameter: int curNodeID (range: 0 to N)
         return: int
@@ -139,25 +187,7 @@ int getTotalValidators(const int[0,N] curNodeID) {
         }
     }
     return totalValidators;
-}
-
-////////////////////////////////////
-typedef int[0,N-F-1] t_id;
-broadcast chan tickManagerStart;
-broadcast chan tickManagerStop;
-broadcast chan tickStart;
-broadcast chan tickStop;
-chan tickAdvance[N-F];
-chan tickAdvanceDone[N-F];
-
-bool tickReady[N] =
-    {true, true};
-////////////////////////////////////
-
-chan tickAdvanceBallot[N-F];
-chan slotDone;
-
-</declaration>
+}</declaration>
 	<template>
 		<name>NodeFaulty</name>
 		<parameter>const f_id nodeID</parameter>
@@ -2086,7 +2116,7 @@ void newRound(bool hasNominatedValues) {
 	</template>
 	<template>
 		<name>NodeFaultyNomination</name>
-		<parameter>const n_id nodeID</parameter>
+		<parameter>const f_id nodeID</parameter>
 		<declaration>
 
 void resetNominationState() {
@@ -2659,7 +2689,7 @@ bool isDoneBallot() {
 
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaulty;
 
-system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
+system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaultyNomination;
 
 </system>
 	<queries>
