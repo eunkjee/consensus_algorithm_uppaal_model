@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
 <nta>
-	<declaration>const int N = 2; // total number of nodes
+	<declaration>
+ 
+const int N = 2; // total number of nodes
 const int F = 0; // total number of faulty nodes
 typedef int[0,N-F-1] n_id; // node id (0 to n-f-1)
 typedef int[N-F,N-1] f_id; // fault node id (n-f to n-1)
@@ -106,15 +108,15 @@ typedef struct {
 } SCPBallotState;
 SCPBallotState ballotStates[N];
 
-// check if valueL &lt; valueR
-bool isLessValue(const bool &amp;valueL[V], const bool &amp;valueR[V]) {
+// check if valueL &amp;lt; valueR
+bool isLessValue(const bool &amp;amp;valueL[V], const bool &amp;amp;valueR[V]) {
     int[-1, V-1] i;
 
-    for (i = V-1; i &gt;= 0; i--) {
-        if (valueL[i] == false &amp;&amp; valueR[i] == true) {
+    for (i = V-1; i &amp;gt;= 0; i--) {
+        if (valueL[i] == false &amp;amp;&amp;amp; valueR[i] == true) {
             return true;
         }
-        else if (valueL[i] == true &amp;&amp; valueR[i] == false) {
+        else if (valueL[i] == true &amp;amp;&amp;amp; valueR[i] == false) {
             return false;
         }
     }
@@ -154,6 +156,7 @@ bool tickReady[N] =
 
 chan tickAdvanceBallot[N-F];
 chan slotDone;
+
 </declaration>
 	<template>
 		<name>NodeFaulty</name>
@@ -329,20 +332,23 @@ chan slotDone;
 	</template>
 	<template>
 		<name>TickManager</name>
-		<declaration>bool isDone() {
+		<declaration>
+
+bool isDone() {
     for (t : t_id) {
         if (tickReady[t] == true) {
             return false;
         }
     }
     return true;
-}
+} // test
 
 void resetTick() {
     for (t : t_id) {
         tickReady[t] = true;
     }
 }
+
 </declaration>
 		<location id="id40" x="-382" y="-8">
 		</location>
@@ -404,7 +410,9 @@ void resetTick() {
 	<template>
 		<name>TickWorker</name>
 		<parameter>const t_id tickID</parameter>
-		<declaration>clock x;</declaration>
+		<declaration>
+
+clock x;</declaration>
 		<location id="id51" x="-306" y="0">
 		</location>
 		<location id="id52" x="-85" y="0">
@@ -450,7 +458,9 @@ void resetTick() {
 	<template>
 		<name>NodeBallot</name>
 		<parameter>const n_id nodeID</parameter>
-		<declaration>void updatebValue() {
+		<declaration>
+
+void updatebValue() {
     if (ballotStates[nodeID].h.value != NOVALUE) {
         ballotStates[nodeID].b.value = ballotStates[nodeID].h.value;
     }
@@ -1724,7 +1734,9 @@ void newBCounter() {
 	<template>
 		<name>NodeNomination</name>
 		<parameter>const n_id nodeID</parameter>
-		<declaration>void resetNominationState() {
+		<declaration>
+
+void resetNominationState() {
     /*
         A method to reset nomination state
         when a state goes back to `StartNomination`
@@ -2073,9 +2085,364 @@ void newRound(bool hasNominatedValues) {
 		</transition>
 	</template>
 	<template>
+		<name>NodeFaultyNomination</name>
+		<parameter>const n_id nodeID</parameter>
+		<declaration>
+
+void resetNominationState() {
+    /*
+        A method to reset nomination state
+        when a state goes back to `StartNomination`
+    */
+    cur_round[nodeID] = 0;
+    tickNomination[nodeID] = 0;
+    canTick[nodeID] = true;
+    protocolFlip[nodeID] = 0;
+    for (v : v_id) {
+        nominatedValues[nodeID][v] = false;
+        nominationStates[nodeID].voted[v] = false;
+        nominationStates[nodeID].accepted[v] = false;
+    }
+}
+
+void initNominationState() {
+    /*
+        A method to init nomination state
+        when a state starts from `StartNomination` to `NominationStarted`
+    */
+    int[0,N] totalValidators = getTotalValidators(nodeID);
+
+    if (qs[slotCur][nodeID].threshold == 0) { 
+        // update a threshold in `qs` for nodeID (the template parameter)
+        int minQuorumCount = totalValidators*THR/100 + 1;
+        qs[slotCur][nodeID].threshold = (minQuorumCount &gt;= totalValidators) 
+                                        ? totalValidators 
+                                        : minQuorumCount ;
+    }
+}
+
+void processMessageNomination(bool hasNominatedValues) {
+    int[0,N] cntValues = 0;
+    int[0,N] cntValues_qs = 0;
+
+    SCPQuorumSlice currentQS = qs[slotCur][nodeID];
+
+    // blocking threshold check for accept nomination
+    for (v : v_id) {
+        cntValues = 0;
+
+        // how many validators have accepted on `v`
+        for (n : int[0,N-1]) {
+            int validator = currentQS.validators[n];
+            if (
+                validator != N
+                &amp;&amp; validator != nodeID
+                &amp;&amp; nominationStates[validator].accepted[v]
+            ) {
+                cntValues++;
+            }
+        }
+
+        // 
+        if (
+            cntValues &gt; (getTotalValidators(nodeID) - currentQS.threshold) // blocking threshold
+            &amp;&amp; !nominationStates[nodeID].accepted[v]
+        ) {
+            nominationStates[nodeID].accepted[v] = true;
+            nominationStates[nodeID].voted[v] = false;
+        }
+    }
+
+    // quorum threshold check for vote nomination
+    for (v : v_id) {
+        cntValues = 0;
+
+        for (n : int[0,N-1]) {
+            int validator = currentQS.validators[n];
+            if (validator != N) { 
+                cntValues_qs = 0;
+                for (n_qs : int[0,N-1]) {
+                    int nestedValidator = qs[slotCur][validator].validators[n_qs];
+                    if (nestedValidator != N) {
+                        if (nominationStates[nestedValidator].accepted[v]) {
+                            cntValues_qs++;
+                        }
+                        else if (nominationStates[nestedValidator].voted[v]) {
+                            cntValues_qs++;
+                        }
+                    }
+                }
+
+                if (cntValues_qs &gt;= qs[slotCur][validator].threshold) {
+                    cntValues++;
+                }
+            }
+        }
+
+        if (cntValues &gt;= currentQS.threshold
+            &amp;&amp; !nominationStates[nodeID].accepted[v]) {
+            nominationStates[nodeID].accepted[v] = true;
+            nominationStates[nodeID].voted[v] = false;
+        }
+    }
+
+    // quorum threshold check for accept nomination
+    for (v : v_id) {
+        cntValues = 0;
+
+        for (n : int[0,N-1]) {
+            int validator = currentQS.validators[n];
+            if (validator != N) {
+                cntValues_qs = 0;
+
+                for (n_qs : int[0,N-1]) {
+                    int nestedValidator = qs[slotCur][validator].validators[n_qs];
+                    if (nestedValidator != N) {
+                        if (nominationStates[nestedValidator].accepted[v]) {
+                            cntValues_qs++;
+                        }
+                    }
+                }
+
+                if (cntValues_qs &gt;= qs[slotCur][validator].threshold) {
+                    cntValues++;
+                }
+            }
+        }
+
+        if (cntValues &gt;= qs[slotCur][nodeID].threshold) {
+            if (!nominationStates[nodeID].accepted[v]) {
+                nominationStates[nodeID].accepted[v] = true;
+                nominationStates[nodeID].voted[v] = false;
+            }
+
+            if (!nominatedValues[nodeID][v]) {
+                nominatedValues[nodeID][v] = true;
+                if (hasNominatedValues == false) {
+                    canTick[nodeID] = false;
+                }
+            }
+        }
+    }
+}
+
+int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
+    int[0,N] highest = cur_round_in % getTotalValidators(nodeID);
+    int[0,N] current = 0;
+
+    for (n : n_id) {
+        if (qs[slotCur][nodeID].validators[n] != N) {
+            if (current == highest) {
+                return qs[slotCur][nodeID].validators[n];
+            }
+            else {
+                current++;
+            }
+        }
+    }
+
+    return nodeID;
+}
+
+void getHigherlayerInput() {
+    for (v : v_id) {
+        if (higherlayerInput[nodeID][v]
+            &amp;&amp; !nominationStates[nodeID].accepted[v]
+            &amp;&amp; !nominationStates[nodeID].voted[v]) {
+            nominationStates[nodeID].voted[v] = true;
+            return;
+        }
+    }
+}
+
+void doEchoing(int[0,N] nodeIDHighest) {
+    for (v : v_id) {
+        if (
+            (nominationStates[nodeIDHighest].accepted[v]
+                || nominationStates[nodeIDHighest].voted[v])
+            &amp;&amp; !nominationStates[nodeID].accepted[v]
+            &amp;&amp; !nominationStates[nodeID].voted[v]
+        ) {
+            nominationStates[nodeID].voted[v] = true;
+        }
+    }
+}
+
+void newRound(bool hasNominatedValues) {
+    int[0,N] nodeIDHighest;
+
+    if (qs[slotCur][nodeID].validators[nodeID] == nodeID) {
+        if (tickNomination[nodeID] == cur_round[nodeID]) {
+            
+            // nomination message passing
+            processMessageNomination(hasNominatedValues);
+
+            if (cur_round[nodeID]&lt;MAXCNT) {
+                cur_round[nodeID]++;
+            }
+
+            if (!hasNominatedValues) {
+                nodeIDHighest = getHighestPriorityNode(cur_round[nodeID]);
+                if (nodeIDHighest == nodeID) {
+                    getHigherlayerInput();
+                }
+                else {
+                    doEchoing(nodeIDHighest);
+                }
+            }
+
+            tickNomination[nodeID] = 0;
+        }
+
+        if (tickNomination[nodeID] &lt; cur_round[nodeID]) {
+            tickNomination[nodeID]++;
+        }
+    }
+}
+</declaration>
+		<location id="id115" x="153" y="0">
+			<name x="17" y="-25">NominationDone</name>
+		</location>
+		<location id="id116" x="-187" y="0">
+			<name x="-161" y="-25">SthNominated</name>
+		</location>
+		<location id="id117" x="-501" y="0">
+			<name x="-493" y="-25">NominationStarted</name>
+		</location>
+		<location id="id118" x="-739" y="0">
+			<name x="-722" y="-25">StartNomination</name>
+		</location>
+		<location id="id119" x="-501" y="195">
+			<committed/>
+		</location>
+		<location id="id120" x="-187" y="-187">
+			<committed/>
+		</location>
+		<location id="id121" x="-348" y="0">
+			<committed/>
+		</location>
+		<init ref="id118"/>
+		<transition id="id122">
+			<source ref="id117"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="-722" y="-212">slotSuccess?</label>
+			<label kind="assignment" x="-722" y="-195">resetNominationState()</label>
+			<nail x="-501" y="-178"/>
+			<nail x="-739" y="-178"/>
+		</transition>
+		<transition id="id123">
+			<source ref="id121"/>
+			<target ref="id116"/>
+			<label kind="synchronisation" x="-340" y="-25">sthNominated[nodeID]!</label>
+		</transition>
+		<transition id="id124">
+			<source ref="id117"/>
+			<target ref="id121"/>
+			<label kind="guard" x="-467" y="17">nominatedValues[nodeID] != NOVALUE</label>
+			<label kind="synchronisation" x="-467" y="34">tickAdvance[nodeID]?</label>
+		</transition>
+		<transition id="id125">
+			<source ref="id120"/>
+			<target ref="id116"/>
+			<label kind="synchronisation" x="-161" y="-136">tickAdvanceBallot[nodeID]!</label>
+			<nail x="-102" y="-93"/>
+		</transition>
+		<transition id="id126">
+			<source ref="id116"/>
+			<target ref="id120"/>
+			<label kind="synchronisation" x="-365" y="-144">tickAdvance[nodeID]?</label>
+			<label kind="assignment" x="-365" y="-127">newRound(true)</label>
+			<nail x="-272" y="-93"/>
+		</transition>
+		<transition id="id127">
+			<source ref="id119"/>
+			<target ref="id117"/>
+			<label kind="synchronisation" x="-501" y="110">tickAdvanceDone[nodeID]!</label>
+			<nail x="-425" y="102"/>
+		</transition>
+		<transition id="id128">
+			<source ref="id117"/>
+			<target ref="id119"/>
+			<label kind="guard" x="-731" y="68">nominatedValues[nodeID] == NOVALUE</label>
+			<label kind="synchronisation" x="-731" y="85">tickAdvance[nodeID]?</label>
+			<label kind="assignment" x="-731" y="102">newRound(false)</label>
+			<nail x="-578" y="102"/>
+		</transition>
+		<transition id="id129">
+			<source ref="id115"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="-137" y="280">slotTimeout?</label>
+			<label kind="assignment" x="-136" y="297">resetNominationState()</label>
+			<nail x="153" y="280"/>
+			<nail x="-740" y="280"/>
+		</transition>
+		<transition id="id130">
+			<source ref="id115"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="-136" y="229">slotFail?</label>
+			<label kind="assignment" x="-136" y="246">resetNominationState()</label>
+			<nail x="153" y="229"/>
+			<nail x="-739" y="229"/>
+		</transition>
+		<transition id="id131">
+			<source ref="id116"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="-722" y="280">slotTimeout?</label>
+			<label kind="assignment" x="-722" y="297">resetNominationState()</label>
+			<nail x="-187" y="280"/>
+			<nail x="-739" y="280"/>
+		</transition>
+		<transition id="id132">
+			<source ref="id117"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="-722" y="-153">slotTimeout?</label>
+			<label kind="assignment" x="-722" y="-136">resetNominationState()</label>
+			<nail x="-501" y="-119"/>
+			<nail x="-739" y="-119"/>
+		</transition>
+		<transition id="id133">
+			<source ref="id116"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="-722" y="229">slotFail?</label>
+			<label kind="assignment" x="-722" y="246">resetNominationState()</label>
+			<nail x="-187" y="229"/>
+			<nail x="-739" y="229"/>
+		</transition>
+		<transition id="id134">
+			<source ref="id117"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="-722" y="-93">slotFail?</label>
+			<label kind="assignment" x="-722" y="-76">resetNominationState()</label>
+			<nail x="-501" y="-59"/>
+			<nail x="-739" y="-59"/>
+		</transition>
+		<transition id="id135">
+			<source ref="id115"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="-722" y="-272">slotSuccess?</label>
+			<label kind="assignment" x="-722" y="-255">resetNominationState()</label>
+			<nail x="153" y="-238"/>
+			<nail x="-739" y="-238"/>
+		</transition>
+		<transition id="id136">
+			<source ref="id116"/>
+			<target ref="id115"/>
+			<label kind="synchronisation" x="-161" y="8">nominationDone[nodeID]?</label>
+			<label kind="assignment" x="-161" y="25">cur_round[nodeID] = INFINITY</label>
+		</transition>
+		<transition id="id137">
+			<source ref="id118"/>
+			<target ref="id117"/>
+			<label kind="synchronisation" x="-722" y="8">slotStarted[slotCur]?</label>
+			<label kind="assignment" x="-722" y="25">initNominationState()</label>
+		</transition>
+	</template>
+	<template>
 		<name>NodeSlot</name>
 		<parameter>const s_id slotID</parameter>
-		<declaration>int[0,N-F] cntSlotDone = 0;
+		<declaration>
+
+int[0,N-F] cntSlotDone = 0;
 
 bool hasHigherlayerInput() {
     for (n : n_id) {
@@ -2164,67 +2531,67 @@ bool isDoneBallot() {
     return true;
 }
 </declaration>
-		<location id="id115" x="93" y="170">
+		<location id="id138" x="93" y="170">
 			<name x="83" y="136">SlotFail</name>
 		</location>
-		<location id="id116" x="93" y="-204">
+		<location id="id139" x="93" y="-204">
 			<name x="83" y="-238">SlotOutofBound</name>
 		</location>
-		<location id="id117" x="93" y="-8">
+		<location id="id140" x="93" y="-8">
 			<name x="83" y="-42">SlotSuccess</name>
 		</location>
-		<location id="id118" x="-161" y="-8">
+		<location id="id141" x="-161" y="-8">
 			<name x="-171" y="-42">SlotDone</name>
 			<committed/>
 		</location>
-		<location id="id119" x="-442" y="-8">
+		<location id="id142" x="-442" y="-8">
 			<name x="-527" y="0">SlotStarted</name>
 		</location>
-		<location id="id120" x="-722" y="-8">
+		<location id="id143" x="-722" y="-8">
 			<name x="-732" y="-42">StartSlot</name>
 		</location>
-		<location id="id121" x="-297" y="-8">
+		<location id="id144" x="-297" y="-8">
 			<committed/>
 		</location>
-		<init ref="id120"/>
-		<transition id="id122">
-			<source ref="id121"/>
-			<target ref="id118"/>
+		<init ref="id143"/>
+		<transition id="id145">
+			<source ref="id144"/>
+			<target ref="id141"/>
 			<label kind="guard" x="-289" y="-59">cntSlotDone == totalParticipants[slotID]</label>
 		</transition>
-		<transition id="id123">
-			<source ref="id121"/>
-			<target ref="id119"/>
+		<transition id="id146">
+			<source ref="id144"/>
+			<target ref="id142"/>
 			<label kind="guard" x="-425" y="59">cntSlotDone &lt; totalParticipants[slotID]</label>
 			<nail x="-365" y="51"/>
 		</transition>
-		<transition id="id124">
-			<source ref="id119"/>
-			<target ref="id121"/>
+		<transition id="id147">
+			<source ref="id142"/>
+			<target ref="id144"/>
 			<label kind="synchronisation" x="-408" y="-110">slotDone?</label>
 			<label kind="assignment" x="-425" y="-93">cntSlotDone++</label>
 			<nail x="-374" y="-68"/>
 		</transition>
-		<transition id="id125">
-			<source ref="id118"/>
-			<target ref="id115"/>
+		<transition id="id148">
+			<source ref="id141"/>
+			<target ref="id138"/>
 			<label kind="guard" x="-153" y="119">exists (i : n_id) !isAllAgreedLocal(i)</label>
 			<label kind="synchronisation" x="-153" y="136">slotFail!</label>
 			<label kind="assignment" x="-153" y="153">doFail()</label>
 			<nail x="-161" y="170"/>
 		</transition>
-		<transition id="id126">
-			<source ref="id119"/>
-			<target ref="id115"/>
+		<transition id="id149">
+			<source ref="id142"/>
+			<target ref="id138"/>
 			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_round[i] == MAXCNT
 &amp;&amp; forall (i : n_id) nominationStates[i].accepted == NOVALUE</label>
 			<label kind="synchronisation" x="-425" y="212">slotFail!</label>
 			<label kind="assignment" x="-425" y="229">doFail()</label>
 			<nail x="-442" y="170"/>
 		</transition>
-		<transition id="id127">
-			<source ref="id119"/>
-			<target ref="id116"/>
+		<transition id="id150">
+			<source ref="id142"/>
+			<target ref="id139"/>
 			<label kind="guard" x="-425" y="-289">(exists (i : n_id) cur_round[i] == MAXCNT
 || exists (i : n_id) cur_b_cnt[i] == MAXCNT)
 &amp;&amp; exists (i : n_id) nominationStates[i].accepted != NOVALUE</label>
@@ -2232,16 +2599,16 @@ bool isDoneBallot() {
 			<label kind="assignment" x="-425" y="-221">doFail()</label>
 			<nail x="-442" y="-204"/>
 		</transition>
-		<transition id="id128">
-			<source ref="id118"/>
-			<target ref="id117"/>
+		<transition id="id151">
+			<source ref="id141"/>
+			<target ref="id140"/>
 			<label kind="guard" x="-144" y="0">forall (i : n_id) isAllAgreedLocal(i)</label>
 			<label kind="synchronisation" x="-144" y="17">slotSuccess!</label>
 			<label kind="assignment" x="-144" y="34">doSuccess()</label>
 		</transition>
-		<transition id="id129">
-			<source ref="id120"/>
-			<target ref="id119"/>
+		<transition id="id152">
+			<source ref="id143"/>
+			<target ref="id142"/>
 			<label kind="guard" x="-705" y="0">slotCur == slotID
 &amp;&amp; hasHigherlayerInput()</label>
 			<label kind="synchronisation" x="-705" y="34">slotStarted[slotCur]!</label>
@@ -2251,35 +2618,34 @@ bool isDoneBallot() {
 	<template>
 		<name x="5" y="5">NodeCheckNomination</name>
 		<parameter>const v_id valueID</parameter>
-		<declaration>// Place local declarations here.</declaration>
-		<location id="id130" x="-25" y="-170">
+		<location id="id153" x="-25" y="-170">
 			<name x="-221" y="-178">CheckNominationSuccess</name>
 		</location>
-		<location id="id131" x="-25" y="-25">
+		<location id="id154" x="-25" y="-25">
 			<name x="-212" y="-59">CheckNominationStarted</name>
 		</location>
-		<location id="id132" x="-416" y="-25">
+		<location id="id155" x="-416" y="-25">
 			<name x="-416" y="-59">StartCheckNomination</name>
 		</location>
-		<init ref="id132"/>
-		<transition id="id133">
-			<source ref="id131"/>
-			<target ref="id132"/>
+		<init ref="id155"/>
+		<transition id="id156">
+			<source ref="id154"/>
+			<target ref="id155"/>
 			<label kind="guard" x="-399" y="93">exists (i : n_id) nominatedValues[i][valueID]
 &amp;&amp; !(forall (i : n_id) nominatedValues[i][valueID])</label>
 			<label kind="synchronisation" x="-399" y="76">slotDone?</label>
 			<nail x="-25" y="68"/>
 			<nail x="-416" y="68"/>
 		</transition>
-		<transition id="id134">
-			<source ref="id131"/>
-			<target ref="id130"/>
+		<transition id="id157">
+			<source ref="id154"/>
+			<target ref="id153"/>
 			<label kind="guard" x="-221" y="-127">forall (i : n_id) nominatedValues[i][valueID]</label>
 			<label kind="synchronisation" x="-221" y="-144">slotDone?</label>
 		</transition>
-		<transition id="id135">
-			<source ref="id132"/>
-			<target ref="id131"/>
+		<transition id="id158">
+			<source ref="id155"/>
+			<target ref="id154"/>
 			<label kind="synchronisation" x="-306" y="-17">slotStarted[slotCur]?</label>
 		</transition>
 	</template>
