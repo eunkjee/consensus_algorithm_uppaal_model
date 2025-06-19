@@ -4,6 +4,10 @@
 	<declaration>
         
 /// ----- ** GLOBAL CONSTANTS
+/*
+    if F != 0, 
+    `NodeFaultyNomination`, `NodeFaultyBallot` should be added in System declarations.
+*/
 const int THR = 100; // quorum threshold number
 const int N = 3; // total number of nodes
 const int F = 1; // total number of faulty nodes
@@ -33,7 +37,6 @@ typedef int[0,N-F-1] n_id; // node id (0 to n-f-1)
 typedef int[N-F,N-1] f_id; // fault node id (n-f to n-1)
 typedef int[0,V-1] v_id; // value id (0 to v-1)
 typedef int[0,SLOTMAX] s_id; // slot id
-// typedef int[0,N-F-1] t_id;
 typedef int[0,N-1] t_id; // tick id
 
 typedef struct {
@@ -124,15 +127,10 @@ bool tickReady[N] =
 
 
 /// ----- ** CHANNELS
-// chan sthNominated[N-F];     // info if s-th node nominated value or not
-// chan nominationDone[N-F];   // info if s-th node nomination process is done or not
 chan sthNominated[N];
 chan nominationDone[N];
 
-// chan tickAdvanceBallot[N-F];
 chan tickAdvanceBallot[N];
-// chan tickAdvance[N-F];
-// chan tickAdvanceDone[N-F];
 chan tickAdvance[N];
 chan tickAdvanceDone[N];
 
@@ -3968,7 +3966,6 @@ bool isDoneBallot() {
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaulty;
 
 system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaultyNomination, NodeFaultyBallot;
-
 </system>
 	<queries>
 		<query>
