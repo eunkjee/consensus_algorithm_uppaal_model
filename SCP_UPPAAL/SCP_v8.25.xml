@@ -16,7 +16,7 @@ const int F = 1; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15;
-const int MAXCNT = 14;
+const int MAXCNT = 14; // cur_round, cur_b_cnt, SCPBallot.counter (INFINITY - 1: ??)
 const int MAXGAP_PROTOCOL = 1;
 const bool NOVALUE[V] = // empty values (no values)
     {false};
@@ -81,12 +81,30 @@ bool higherlayerInput[N][V] =
      {true}};
 
 SCPQuorumSlice qs[V][N] =
-// the entire of nodes are in one quorum
-// {threshold, {validators[N]}}
+    // the entire of nodes are in one quorum
+    // {threshold, {validators[N]}}
      {{{0, {0, 1, 2}},
        {0, {0, 1, 2}},
        {0, {0, 1, 2}}}};
 
+SCPNominationState nominationStates[N] =
+    {{{false}, {false}},
+     {{false}, {false}},
+     {{false}, {false}}};
+
+bool nominatedValues[N][V] =
+    {{false},
+     {false},
+     {false}};
+
+bool ballotDone[N] =
+    {false, false, false};
+
+bool canTick[N] =
+    {true, true, true};
+    
+bool tickReady[N] =
+    {true, true, true};
 
 int[0,INFINITY] cur_round[N] =
     {0, 0, 0};
@@ -102,27 +120,6 @@ int[0,INFINITY] tickBallot[N] =
 
 int[0,MAXGAP_PROTOCOL*2] protocolFlip[N] =
     {0, 0, 0};
-
-bool canTick[N] =
-    {true, true, true};
-
-
-SCPNominationState nominationStates[N] =
-    {{{false}, {false}},
-     {{false}, {false}},
-     {{false}, {false}}};
-
-bool nominatedValues[N][V] =
-    {{false},
-     {false},
-     {false}};
-
-bool ballotDone[N] =
-    {false, false, false};
-
-
-bool tickReady[N] =
-    {true, true, true};
 
 
 
@@ -523,32 +520,40 @@ void initNominationState() {
 }
 
 void processMessageNomination(bool hasNominatedValues) {
-    int[0,N] cntValues = 0;
-    int[0,N] cntValues_qs = 0;
-
-    SCPQuorumSlice currentQS = qs[slotCur][nodeID];
+    int[0,N] cntValues = 0; // node count
+    int[0,N] cntValues_qs = 0; // node count in quorum slice
 
     // blocking threshold check for accept nomination
     for (v : v_id) {
         cntValues = 0;
 
         // how many validators have accepted on `v`
+        /* 
+          For the current node
+          - qs[slotCur][nodeID]: quorum slice
+          - qs[slotCur][nodeID].validators[n]: a validator
+          - qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs]: a nested validator (validator's validator)
+        */
+
         for (n : int[0,N-1]) {
-            int validator = currentQS.validators[n];
+            // TODO: if a validator[] value represents validator's id, `n` would be better to be replaced by `i`
             if (
-                validator != N
-                &amp;&amp; validator != nodeID
-                &amp;&amp; nominationStates[validator].accepted[v]
+                qs[slotCur][nodeID].validators[n] != N
+                &amp;&amp; qs[slotCur][nodeID].validators[n] != nodeID
+                &amp;&amp; nominationStates[
+                    qs[slotCur][nodeID].validators[n]
+                ].accepted[v]
             ) {
-                cntValues++;
+                cntValues++; // count for acceptance of my validators on `v`
             }
         }
 
         // 
         if (
-            cntValues &gt; (getTotalValidators(nodeID) - currentQS.threshold) // blocking threshold
+            cntValues &gt; (getTotalValidators(nodeID) - qs[slotCur][nodeID].threshold) // blocking threshold
             &amp;&amp; !nominationStates[nodeID].accepted[v]
         ) {
+            // !!!: possible tweak-able point
             nominationStates[nodeID].accepted[v] = true;
             nominationStates[nodeID].voted[v] = false;
         }
@@ -559,29 +564,36 @@ void processMessageNomination(bool hasNominatedValues) {
         cntValues = 0;
 
         for (n : int[0,N-1]) {
-            int validator = currentQS.validators[n];
-            if (validator != N) { 
+            if (qs[slotCur][nodeID].validators[n] != N) { 
                 cntValues_qs = 0;
                 for (n_qs : int[0,N-1]) {
-                    int nestedValidator = qs[slotCur][validator].validators[n_qs];
-                    if (nestedValidator != N) {
-                        if (nominationStates[nestedValidator].accepted[v]) {
+                    if (qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs] != N) {
+                        if (
+                            nominationStates[
+                                qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs]
+                            ].accepted[v]
+                        ) {
                             cntValues_qs++;
                         }
-                        else if (nominationStates[nestedValidator].voted[v]) {
+                        else if (
+                            nominationStates[
+                                qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs]
+                            ].voted[v]
+                        ) {
                             cntValues_qs++;
                         }
                     }
                 }
 
-                if (cntValues_qs &gt;= qs[slotCur][validator].threshold) {
+                if (cntValues_qs &gt;= qs[slotCur][qs[slotCur][nodeID].validators[n]].threshold) {
                     cntValues++;
                 }
             }
         }
 
-        if (cntValues &gt;= currentQS.threshold
+        if (cntValues &gt;= qs[slotCur][nodeID].threshold
             &amp;&amp; !nominationStates[nodeID].accepted[v]) {
+            // !!!: possible tweak-able point
             nominationStates[nodeID].accepted[v] = true;
             nominationStates[nodeID].voted[v] = false;
         }
@@ -592,26 +604,29 @@ void processMessageNomination(bool hasNominatedValues) {
         cntValues = 0;
 
         for (n : int[0,N-1]) {
-            int validator = currentQS.validators[n];
-            if (validator != N) {
+            if (qs[slotCur][nodeID].validators[n] != N) {
                 cntValues_qs = 0;
 
                 for (n_qs : int[0,N-1]) {
-                    int nestedValidator = qs[slotCur][validator].validators[n_qs];
-                    if (nestedValidator != N) {
-                        if (nominationStates[nestedValidator].accepted[v]) {
+                    if (qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs] != N) {
+                        if (
+                            nominationStates[
+                                qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs]
+                            ].accepted[v]
+                        ) {
                             cntValues_qs++;
                         }
                     }
                 }
 
-                if (cntValues_qs &gt;= qs[slotCur][validator].threshold) {
+                if (cntValues_qs &gt;= qs[slotCur][qs[slotCur][nodeID].validators[n]].threshold) {
                     cntValues++;
                 }
             }
         }
 
         if (cntValues &gt;= qs[slotCur][nodeID].threshold) {
+            // !!!: possible tweak-able point
             if (!nominationStates[nodeID].accepted[v]) {
                 nominationStates[nodeID].accepted[v] = true;
                 nominationStates[nodeID].voted[v] = false;
@@ -628,12 +643,13 @@ void processMessageNomination(bool hasNominatedValues) {
 }
 
 int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
+    // ???: 이 함수의 작동 방식?
     int[0,N] highest = cur_round_in % getTotalValidators(nodeID);
     int[0,N] current = 0;
 
     for (n : n_id) {
         if (qs[slotCur][nodeID].validators[n] != N) {
-            if (current == highest) {
+            if (current == highest) { 
                 return qs[slotCur][nodeID].validators[n];
             }
             else {
@@ -657,6 +673,13 @@ void getHigherlayerInput() {
 }
 
 void doEchoing(int[0,N] nodeIDHighest) {
+    /*
+        For v-th value,
+        if (highest node `voted` or `accepted` on it) and 
+            nodeID(current node) has not voted or accepted on it,
+
+        nodeID follows the highest node's decision.
+    */
     for (v : v_id) {
         if (
             (nominationStates[nodeIDHighest].accepted[v]
@@ -672,29 +695,38 @@ void doEchoing(int[0,N] nodeIDHighest) {
 void newRound(bool hasNominatedValues) {
     int[0,N] nodeIDHighest;
 
+    // check if itself exists in its quorum slice
     if (qs[slotCur][nodeID].validators[nodeID] == nodeID) {
+        
+        // if its nomination tick reaches its current round value
         if (tickNomination[nodeID] == cur_round[nodeID]) {
             
             // nomination message passing
             processMessageNomination(hasNominatedValues);
 
+            // mark as proceeding next round
             if (cur_round[nodeID]&lt;MAXCNT) {
                 cur_round[nodeID]++;
             }
 
+            // only if it does not have nominated values
+            // if it has some, it won't suggest or vote for new values
             if (!hasNominatedValues) {
+                // get a leader
                 nodeIDHighest = getHighestPriorityNode(cur_round[nodeID]);
                 if (nodeIDHighest == nodeID) {
+                    // if leader is self, get and vote for a higher layer input.
                     getHigherlayerInput();
                 }
                 else {
+                    // else, vote for the leader's value
                     doEchoing(nodeIDHighest);
                 }
             }
-
+            // reset its nomination tick counter
             tickNomination[nodeID] = 0;
         }
-
+        // else, increase the tick
         if (tickNomination[nodeID] &lt; cur_round[nodeID]) {
             tickNomination[nodeID]++;
         }
@@ -879,27 +911,34 @@ void processMessageNomination(bool hasNominatedValues) {
     int[0,N] cntValues = 0;
     int[0,N] cntValues_qs = 0;
 
-    SCPQuorumSlice currentQS = qs[slotCur][nodeID];
-
     // blocking threshold check for accept nomination
     for (v : v_id) {
         cntValues = 0;
 
         // how many validators have accepted on `v`
+        /* 
+          For the current node
+          - qs[slotCur][nodeID]: quorum slice
+          - qs[slotCur][nodeID].validators[n]: a validator
+          - qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs]: a nested validator (validator's validator)
+        */
+
         for (n : int[0,N-1]) {
-            int validator = currentQS.validators[n];
+            // TODO: if a validator[] value represents validator's id, `n` would be better to be replaced by `i`
             if (
-                validator != N
-                &amp;&amp; validator != nodeID
-                &amp;&amp; nominationStates[validator].accepted[v]
+                qs[slotCur][nodeID].validators[n] != N
+                &amp;&amp; qs[slotCur][nodeID].validators[n] != nodeID
+                &amp;&amp; nominationStates[
+                    qs[slotCur][nodeID].validators[n]
+                ].accepted[v]
             ) {
-                cntValues++;
+                cntValues++; // count for acceptance of my validators on `v`
             }
         }
 
         // 
         if (
-            cntValues &gt; (getTotalValidators(nodeID) - currentQS.threshold) // blocking threshold
+            cntValues &gt; (getTotalValidators(nodeID) - qs[slotCur][nodeID].threshold) // blocking threshold
             &amp;&amp; !nominationStates[nodeID].accepted[v]
         ) {
             nominationStates[nodeID].accepted[v] = true;
@@ -912,28 +951,34 @@ void processMessageNomination(bool hasNominatedValues) {
         cntValues = 0;
 
         for (n : int[0,N-1]) {
-            int validator = currentQS.validators[n];
-            if (validator != N) { 
+            if (qs[slotCur][nodeID].validators[n] != N) { 
                 cntValues_qs = 0;
                 for (n_qs : int[0,N-1]) {
-                    int nestedValidator = qs[slotCur][validator].validators[n_qs];
-                    if (nestedValidator != N) {
-                        if (nominationStates[nestedValidator].accepted[v]) {
+                    if (qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs] != N) {
+                        if (
+                            nominationStates[
+                                qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs]
+                            ].accepted[v]
+                        ) {
                             cntValues_qs++;
                         }
-                        else if (nominationStates[nestedValidator].voted[v]) {
+                        else if (
+                            nominationStates[
+                                qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs]
+                            ].voted[v]
+                        ) {
                             cntValues_qs++;
                         }
                     }
                 }
 
-                if (cntValues_qs &gt;= qs[slotCur][validator].threshold) {
+                if (cntValues_qs &gt;= qs[slotCur][qs[slotCur][nodeID].validators[n]].threshold) {
                     cntValues++;
                 }
             }
         }
 
-        if (cntValues &gt;= currentQS.threshold
+        if (cntValues &gt;= qs[slotCur][nodeID].threshold
             &amp;&amp; !nominationStates[nodeID].accepted[v]) {
             nominationStates[nodeID].accepted[v] = true;
             nominationStates[nodeID].voted[v] = false;
@@ -945,20 +990,22 @@ void processMessageNomination(bool hasNominatedValues) {
         cntValues = 0;
 
         for (n : int[0,N-1]) {
-            int validator = currentQS.validators[n];
-            if (validator != N) {
+            if (qs[slotCur][nodeID].validators[n] != N) {
                 cntValues_qs = 0;
 
                 for (n_qs : int[0,N-1]) {
-                    int nestedValidator = qs[slotCur][validator].validators[n_qs];
-                    if (nestedValidator != N) {
-                        if (nominationStates[nestedValidator].accepted[v]) {
+                    if (qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs] != N) {
+                        if (
+                            nominationStates[
+                                qs[slotCur][qs[slotCur][nodeID].validators[n]].validators[n_qs]
+                            ].accepted[v]
+                        ) {
                             cntValues_qs++;
                         }
                     }
                 }
 
-                if (cntValues_qs &gt;= qs[slotCur][validator].threshold) {
+                if (cntValues_qs &gt;= qs[slotCur][qs[slotCur][nodeID].validators[n]].threshold) {
                     cntValues++;
                 }
             }
@@ -981,12 +1028,13 @@ void processMessageNomination(bool hasNominatedValues) {
 }
 
 int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
+    // ???: 이 함수의 작동 방식?
     int[0,N] highest = cur_round_in % getTotalValidators(nodeID);
     int[0,N] current = 0;
 
     for (n : n_id) {
         if (qs[slotCur][nodeID].validators[n] != N) {
-            if (current == highest) {
+            if (current == highest) { 
                 return qs[slotCur][nodeID].validators[n];
             }
             else {
@@ -1010,6 +1058,13 @@ void getHigherlayerInput() {
 }
 
 void doEchoing(int[0,N] nodeIDHighest) {
+    /*
+        For v-th value,
+        if (highest node `voted` or `accepted` on it) and 
+            nodeID(current node) has not voted or accepted on it,
+
+        nodeID follows the highest node's decision.
+    */
     for (v : v_id) {
         if (
             (nominationStates[nodeIDHighest].accepted[v]
@@ -1025,29 +1080,38 @@ void doEchoing(int[0,N] nodeIDHighest) {
 void newRound(bool hasNominatedValues) {
     int[0,N] nodeIDHighest;
 
+    // check if itself exists in its quorum slice
     if (qs[slotCur][nodeID].validators[nodeID] == nodeID) {
+        
+        // if its nomination tick reaches its current round value
         if (tickNomination[nodeID] == cur_round[nodeID]) {
             
             // nomination message passing
             processMessageNomination(hasNominatedValues);
 
+            // mark as proceeding next round
             if (cur_round[nodeID]&lt;MAXCNT) {
                 cur_round[nodeID]++;
             }
 
+            // only if it does not have nominated values
+            // if it has some, it won't suggest or vote for new values
             if (!hasNominatedValues) {
+                // get a leader
                 nodeIDHighest = getHighestPriorityNode(cur_round[nodeID]);
                 if (nodeIDHighest == nodeID) {
+                    // if leader is self, get and vote for a higher layer input.
                     getHigherlayerInput();
                 }
                 else {
+                    // else, vote for the leader's value
                     doEchoing(nodeIDHighest);
                 }
             }
-
+            // reset its nomination tick counter
             tickNomination[nodeID] = 0;
         }
-
+        // else, increase the tick
         if (tickNomination[nodeID] &lt; cur_round[nodeID]) {
             tickNomination[nodeID]++;
         }
@@ -1194,6 +1258,13 @@ void newRound(bool hasNominatedValues) {
 	<template>
 		<name x="5" y="5">NodeCheckNomination</name>
 		<parameter>const v_id valueID</parameter>
+		<declaration>/*
+    On `CheckNominationStarted`,
+
+    receiving `slotDone` message, check two guards:
+    1. if all nodes nominated `valueID` -&gt; goes to `CheckNominationSuccess`
+    2. if all nodes somehow nominated `valueID`, but they are not same value -&gt; goes back to StartCheckNomination
+*/</declaration>
 		<location id="id105" x="-25" y="-170">
 			<name x="-221" y="-178">CheckNominationSuccess</name>
 		</location>
@@ -3789,6 +3860,96 @@ bool hasHigherlayerInput() {
         if (higherlayerInput[n] != NOVALUE) {
             return true;
         }
+
+int[0,N-F] cntSlotDone = 0;
+
+bool hasHigherlayerInput() {
+    for (n : n_id) {
+        if (higherlayerInput[n] != NOVALUE) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isAllAgreed(const bool &amp;value[V]) {
+    for (n : n_id) {
+        if (ballotStates[n].c.value != value) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void clearInputs(const bool &amp;value[V]) {
+    for (v : v_id) {
+        if (value[v]) {
+            for (n : n_id) {
+                higherlayerInput[n][v] = false;
+            }
+        }
+    }
+}
+
+void doSuccess() {
+    clearInputs(ballotStates[0].c.value);
+    if (slotCur &lt; SLOTMAX) {
+        slotCur++;
+    }
+}
+
+void doFail() {
+    if (slotCur &lt; SLOTMAX) {
+        slotCur++;
+    }
+}
+
+bool isSlotUnknown() {
+    for (n : n_id) {
+        if ((cur_round[n] == MAXCNT &amp;&amp; nominatedValues[n] == NOVALUE) || (cur_b_cnt[n] == MAXCNT &amp;&amp; ballotStates[n].curState != SCPExternalize)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isAllAgreedLocal(int[0,N-F-1] nID) {
+    bool value[V] = NOVALUE;
+
+    for (n : n_id) {
+        if (qs[slotCur][nID].validators[n] != N) {
+            if (value == NOVALUE) {
+                value = ballotStates[qs[slotCur][nID].validators[n]].c.value;
+            }
+            else {
+                if (ballotStates[qs[slotCur][nID].validators[n]].c.value != value) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+bool isDoneNomination() {
+    for (n : n_id) {
+        if (cur_round[n] != INFINITY) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool isDoneBallot() {
+    for (n : n_id) {
+        if (ballotStates[n].curState != SCPExternalize) {
+            return false;
+        }
+    }
+    return true;
+}
+
     }
     return false;
 }
