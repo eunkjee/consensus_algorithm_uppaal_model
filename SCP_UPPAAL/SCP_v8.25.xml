@@ -9,8 +9,8 @@
     `NodeFaultyNomination`, `NodeFaultyBallot` should be added in System declarations.
 */
 const int THR = 100; // quorum threshold number
-const int N = 3; // total number of nodes
-const int F = 0; // total number of faulty nodes
+const int N = 5; // total number of nodes
+const int F = 3; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
@@ -72,7 +72,9 @@ SCPBallotState ballotStates[N];
 
 // total participants involved for each value
 // used in Slot management
-const int totalParticipants[V] = {N};
+///const int totalParticipants[V] = {5};
+const int totalParticipants[V] = {N+1}; /// Not yet to be found an exact cause
+
 const bool NOVALUE[V] = // empty values (no values)
     {false};
 
@@ -81,50 +83,71 @@ bool higherlayerInput[N][V] =
     /// !!!: faulty nodes should not have any input values!
     {{true},
      {true},
+     {true},
+     {true},
      {true}};
 
 SCPQuorumSlice qs[V][N] =
     // the entire of nodes are in one quorum
     // represents an invalid validator as N (e.g., {0, 1, N})
     // {threshold, {validators[N]}}
-     {{{0, {0, 1, 2}},
-       {0, {0, 1, 2}},
-       {0, {0, 1, 2}}}};
+     {{{0, {0, 1, 2, 3, 4}},
+       {0, {0, 1, 2, 3, 4}},
+       {0, {0, 1, 2, 3, 4}},
+       {0, {0, 1, 2, 3, 4}},
+       {0, {0, 1, 2, 3, 4}}}};
+       
+//       {{{0, {0, 1, 2}},
+//       {0, {0, 1, 2}},
+//       {0, {0, 1, 2}}}};
 
 SCPNominationState nominationStates[N] =
     {{{false}, {false}},
      {{false}, {false}},
+     {{false}, {false}},
+     {{false}, {false}},
      {{false}, {false}}};
+//    {{{false}, {false}},
+//     {{false}, {false}},
+//     {{false}, {false}}};
 
 bool nominatedValues[N][V] =
     {{false},
      {false},
+     {false},
+     {false},
      {false}};
+     
+//    {{false},
+//     {false},
+//     {false}};
 
 bool ballotDone[N] =
-    {false, false, false};
-
+    {false, false, false, false, false};
+//    {false, false, false};
 bool canTick[N] =
-    {true, true, true};
-    
+    {true, true, true, true, true};
+//    {true, true, true};    
 bool tickReady[N] =
-    {true, true, true};
+    {true, true, true, true, true};
+//    {true, true, true};
 
 int[0,INFINITY] cur_round[N] = // current running round states of each node
-    {0, 0, 0};
+//    {0, 0, 0};
+    {0, 0, 0, 0, 0};
 
 int[0,INFINITY] cur_b_cnt[N] =
-    {0, 0, 0};
-
+//    {0, 0, 0};
+    {0, 0, 0, 0, 0};
 int[0,INFINITY] tickNomination[N] =
-    {0, 0, 0};
-
+//    {0, 0, 0};
+    {0, 0, 0, 0, 0};
 int[0,INFINITY] tickBallot[N] =
-    {0, 0, 0};
-
+//    {0, 0, 0};
+    {0, 0, 0, 0, 0};
 int[0,MAXGAP_PROTOCOL*2] protocolFlip[N] =
-    {0, 0, 0};
-
+//    {0, 0, 0};
+    {0, 0, 0, 0, 0};
 
 
 /// ----- ** CHANNELS
@@ -946,8 +969,8 @@ void processMessageNomination(bool hasNominatedValues) {
             &amp;&amp; !nominationStates[myID].accepted[v]
         ) {
             // !!!: possible tweak-able point
-            nominationStates[myID].accepted[v] = true;
-            nominationStates[myID].voted[v] = false;
+            nominationStates[myID].accepted[v] = false; /// &lt;--- faulty action (original: true)
+            nominationStates[myID].voted[v] = true; /// &lt;--- faulty action (original: false)
         }
     }
 
@@ -3914,7 +3937,7 @@ bool isSlotUnknown() {
     return false;
 }
 
-bool isAllAgreedLocal(int[0,N-F-1] nID) {
+bool isAllAgreedLocal(int[0,N-1] nID) {
     bool value[V] = NOVALUE;
 
     for (n : n_id) {
@@ -4046,10 +4069,10 @@ bool isDoneBallot() {
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaulty;
 
 // ** Basic simulation
-system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
+//system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
 
 // ** Faulty simulation
-//system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaultyNomination, NodeFaultyBallot;
+system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaultyNomination, NodeFaultyBallot;
 </system>
 	<queries>
 		<option key="--state-representation" value="1"/>
@@ -4061,31 +4084,19 @@ system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
 			</formula>
 			<comment>Success Possibility (Reachability)
 Purpose: Does there exist an execution path where all slots can be successfully completed?</comment>
-			<result outcome="success" type="quality" timestamp="2025-06-23 13:00:59 +0900">
-				<option key="--state-representation" value="1"/>
-				<option key="--search-order" value="0"/>
-				<option key="--statespace-consumption" value="2"/>
-				<option key="--diagnostic" value="0"/>
-			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : s_id) not NodeSlot(i).SlotFail
 			</formula>
 			<comment>Failure Prevention (Safety Property)
 Purpose: Does no slot failure occur in any execution?</comment>
-			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:03 +0900">
-				<option key="--state-representation" value="1"/>
-				<option key="--search-order" value="0"/>
-				<option key="--statespace-consumption" value="2"/>
-				<option key="--diagnostic" value="0"/>
-			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : s_id) not NodeSlot(i).SlotOutofBound</formula>
 			<comment>Considering faulty nodes
 Timeout Prevention (Safety Property with Faulty Nodes)
 Purpose: Do timeout-induced slot failures not occur?</comment>
-			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:06 +0900">
+			<result outcome="success" type="quality" timestamp="2025-06-23 17:05:02 +0900">
 				<option key="--state-representation" value="1"/>
 				<option key="--search-order" value="0"/>
 				<option key="--statespace-consumption" value="2"/>
@@ -4098,7 +4109,7 @@ Purpose: Do timeout-induced slot failures not occur?</comment>
 			<comment>Not considering faulty nodes
 Integrated Failure Prevention (Combined Safety)
 Purpose: Are all forms of slot failures prevented?</comment>
-			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:10 +0900">
+			<result outcome="success" type="quality" timestamp="2025-06-23 17:05:04 +0900">
 				<option key="--state-representation" value="1"/>
 				<option key="--search-order" value="0"/>
 				<option key="--statespace-consumption" value="2"/>
@@ -4115,7 +4126,7 @@ Purpose: If a slot succeeds, has nomination necessarily been completed?</comment
 			<formula>A[] forall (i : n_id) (ballotStates[i].pp.counter == 0 &amp;&amp; ballotStates[i].pp.value == NOVALUE)</formula>
 			<comment>Ballot Consistency (Ballot Consistency)
 Purpose: Are previous prepare ballots properly managed?</comment>
-			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:13 +0900">
+			<result outcome="success" type="quality" timestamp="2025-06-23 17:05:07 +0900">
 				<option key="--state-representation" value="1"/>
 				<option key="--search-order" value="0"/>
 				<option key="--statespace-consumption" value="2"/>
@@ -4126,7 +4137,7 @@ Purpose: Are previous prepare ballots properly managed?</comment>
 			<formula>A[] forall (i : n_id) ballotStates[i].c.counter != 0 imply (ballotStates[i].c.value == ballotStates[i].h.value &amp;&amp; ballotStates[i].c.counter &lt;= ballotStates[i].h.counter) &amp;&amp; (ballotStates[i].h.value == ballotStates[i].b.value &amp;&amp; ballotStates[i].h.counter &lt;= ballotStates[i].b.counter)
 			</formula>
 			<comment/>
-			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:16 +0900">
+			<result outcome="success" type="quality" timestamp="2025-06-23 17:05:10 +0900">
 				<option key="--state-representation" value="1"/>
 				<option key="--search-order" value="0"/>
 				<option key="--statespace-consumption" value="2"/>
@@ -4138,7 +4149,7 @@ Purpose: Are previous prepare ballots properly managed?</comment>
 			<comment>Deadlock Prevention (Liveness Property)
 Purpose: Does the system not fall into deadlock?</comment>
 			<option key="--diagnostic" value="0"/>
-			<result outcome="failure" type="quality" timestamp="2025-06-23 13:01:20 +0900">
+			<result outcome="success" type="quality" timestamp="2025-06-23 17:05:13 +0900">
 				<option key="--diagnostic" value="0"/>
 			</result>
 		</query>
