@@ -10,7 +10,7 @@
 */
 const int THR = 100; // quorum threshold number
 const int N = 3; // total number of nodes
-const int F = 1; // total number of faulty nodes
+const int F = 0; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
@@ -4046,61 +4046,100 @@ bool isDoneBallot() {
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaulty;
 
 // ** Basic simulation
-// system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
+system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
 
 // ** Faulty simulation
-system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaultyNomination, NodeFaultyBallot;
+//system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaultyNomination, NodeFaultyBallot;
 </system>
 	<queries>
+		<option key="--state-representation" value="1"/>
+		<option key="--search-order" value="0"/>
+		<option key="--statespace-consumption" value="2"/>
+		<option key="--diagnostic" value="0"/>
 		<query>
 			<formula>E&lt;&gt; forall (i : s_id) NodeSlot(i).SlotSuccess
 			</formula>
-			<comment/>
-			<result outcome="success" type="quality" timestamp="2025-06-23 10:38:58 +0900">
+			<comment>Success Possibility (Reachability)
+Purpose: Does there exist an execution path where all slots can be successfully completed?</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 13:00:59 +0900">
+				<option key="--state-representation" value="1"/>
+				<option key="--search-order" value="0"/>
+				<option key="--statespace-consumption" value="2"/>
+				<option key="--diagnostic" value="0"/>
 			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : s_id) not NodeSlot(i).SlotFail
 			</formula>
-			<comment/>
-			<result outcome="success" type="quality" timestamp="2025-06-23 10:38:21 +0900">
+			<comment>Failure Prevention (Safety Property)
+Purpose: Does no slot failure occur in any execution?</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:03 +0900">
+				<option key="--state-representation" value="1"/>
+				<option key="--search-order" value="0"/>
+				<option key="--statespace-consumption" value="2"/>
+				<option key="--diagnostic" value="0"/>
 			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : s_id) not NodeSlot(i).SlotOutofBound</formula>
-			<comment>Considering faulty nodes</comment>
-			<result outcome="failure" type="quality" timestamp="2025-06-23 10:39:02 +0900">
+			<comment>Considering faulty nodes
+Timeout Prevention (Safety Property with Faulty Nodes)
+Purpose: Do timeout-induced slot failures not occur?</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:06 +0900">
+				<option key="--state-representation" value="1"/>
+				<option key="--search-order" value="0"/>
+				<option key="--statespace-consumption" value="2"/>
+				<option key="--diagnostic" value="0"/>
 			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : s_id) not (NodeSlot(i).SlotFail || NodeSlot(i).SlotOutofBound)
 			</formula>
-			<comment>Not considering faulty nodes</comment>
-			<result outcome="failure" type="quality" timestamp="2025-06-23 10:39:12 +0900">
+			<comment>Not considering faulty nodes
+Integrated Failure Prevention (Combined Safety)
+Purpose: Are all forms of slot failures prevented?</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:10 +0900">
+				<option key="--state-representation" value="1"/>
+				<option key="--search-order" value="0"/>
+				<option key="--statespace-consumption" value="2"/>
+				<option key="--diagnostic" value="0"/>
 			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : s_id) (NodeSlot(i).SlotSuccess imply forall (j : v_id) not NodeCheckNomination(j).StartCheckNomination)
 			</formula>
-			<comment/>
+			<comment>Nomination Completeness (Completeness)
+Purpose: If a slot succeeds, has nomination necessarily been completed?</comment>
 		</query>
 		<query>
 			<formula>A[] forall (i : n_id) (ballotStates[i].pp.counter == 0 &amp;&amp; ballotStates[i].pp.value == NOVALUE)</formula>
-			<comment/>
-			<result outcome="success" type="quality" timestamp="2025-06-23 10:38:31 +0900">
+			<comment>Ballot Consistency (Ballot Consistency)
+Purpose: Are previous prepare ballots properly managed?</comment>
+			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:13 +0900">
+				<option key="--state-representation" value="1"/>
+				<option key="--search-order" value="0"/>
+				<option key="--statespace-consumption" value="2"/>
+				<option key="--diagnostic" value="0"/>
 			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : n_id) ballotStates[i].c.counter != 0 imply (ballotStates[i].c.value == ballotStates[i].h.value &amp;&amp; ballotStates[i].c.counter &lt;= ballotStates[i].h.counter) &amp;&amp; (ballotStates[i].h.value == ballotStates[i].b.value &amp;&amp; ballotStates[i].h.counter &lt;= ballotStates[i].b.counter)
 			</formula>
 			<comment/>
-			<result outcome="success" type="quality" timestamp="2025-06-23 10:38:33 +0900">
+			<result outcome="success" type="quality" timestamp="2025-06-23 13:01:16 +0900">
+				<option key="--state-representation" value="1"/>
+				<option key="--search-order" value="0"/>
+				<option key="--statespace-consumption" value="2"/>
+				<option key="--diagnostic" value="0"/>
 			</result>
 		</query>
 		<query>
 			<formula>A[] not deadlock</formula>
-			<comment/>
-			<result outcome="failure" type="quality" timestamp="2025-06-23 10:38:36 +0900">
+			<comment>Deadlock Prevention (Liveness Property)
+Purpose: Does the system not fall into deadlock?</comment>
+			<option key="--diagnostic" value="0"/>
+			<result outcome="failure" type="quality" timestamp="2025-06-23 13:01:20 +0900">
+				<option key="--diagnostic" value="0"/>
 			</result>
 		</query>
 	</queries>
