@@ -1086,7 +1086,7 @@ int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
     return myID;
 }
 
-void getHigherlayerInput() {
+void getMyHigherlayerInput() {
     for (v : v_id) {
         if (higherlayerInput[myID][v]
             &amp;&amp; !nominationStates[myID].accepted[v]
@@ -1141,7 +1141,7 @@ void newRound(bool hasNominatedValues) {
                 nodeIDHighest = getHighestPriorityNode(cur_round[myID]);
                 if (nodeIDHighest == myID) {
                     // if leader is self, get and vote for a higher layer input.
-                    getHigherlayerInput();
+                    getMyHigherlayerInput();
                 }
                 else {
                     // else, vote for the leader's value
