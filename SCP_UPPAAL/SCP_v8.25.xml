@@ -81,46 +81,50 @@ const bool NOVALUE[V] = // empty values (no values)
 bool higherlayerInput[N][V] =
     // values that nodes want to write on a block
     /// !!!: faulty nodes should not have any input values!
-    {{true},
-     {true},
-     {true},
-     {true},
-     {true}};
+   {{true},
+    {true},
+    {true},
+    {true},
+    {true}};
+     
+    // {{true},
+    //  {true},
+    //  {true}};
 
 SCPQuorumSlice qs[V][N] =
     // the entire of nodes are in one quorum
     // represents an invalid validator as N (e.g., {0, 1, N})
     // {threshold, {validators[N]}}
-     {{{0, {0, 1, 2, 3, 4}},
-       {0, {0, 1, 2, 3, 4}},
-       {0, {0, 1, 2, 3, 4}},
-       {0, {0, 1, 2, 3, 4}},
-       {0, {0, 1, 2, 3, 4}}}};
+    {{{0, {0, 1, 2, 3, 4}},
+      {0, {0, 1, 2, 3, 4}},
+      {0, {0, 1, 2, 3, 4}},
+      {0, {0, 1, 2, 3, 4}},
+      {0, {0, 1, 2, 3, 4}}}};
        
-//       {{{0, {0, 1, 2}},
-//       {0, {0, 1, 2}},
-//       {0, {0, 1, 2}}}};
+    //    {{{0, {0, 1, 2}},
+    //    {0, {0, 1, 2}},
+    //    {0, {0, 1, 2}}}};
 
 SCPNominationState nominationStates[N] =
-    {{{false}, {false}},
-     {{false}, {false}},
-     {{false}, {false}},
-     {{false}, {false}},
-     {{false}, {false}}};
-//    {{{false}, {false}},
-//     {{false}, {false}},
-//     {{false}, {false}}};
+   {{{false}, {false}},
+    {{false}, {false}},
+    {{false}, {false}},
+    {{false}, {false}},
+    {{false}, {false}}};
+    // {{{false}, {false}},
+    //  {{false}, {false}},
+    //  {{false}, {false}}};
 
 bool nominatedValues[N][V] =
-    {{false},
-     {false},
-     {false},
-     {false},
-     {false}};
+   {{false},
+    {false},
+    {false},
+    {false},
+    {false}};
      
-//    {{false},
-//     {false},
-//     {false}};
+    // {{false},
+    //  {false},
+    //  {false}};
 
 bool ballotDone[N] =
     {false, false, false, false, false};
@@ -557,9 +561,9 @@ void processMessageNomination(bool hasNominatedValues) {
         // how many validators have accepted on `v`
         /* 
           For the current node
-          - qs[slotCur][nodeID]: quorum slice
-          - qs[slotCur][nodeID].validators[n]: a validator
-          - qs[slotCur][qs[slotCur][nodeID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
+          - qs[slotCur][myID]: quorum slice
+          - qs[slotCur][myID].validators[n]: a validator
+          - qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
         */
 
         for (id : int[0,N-1]) {
@@ -946,9 +950,9 @@ void processMessageNomination(bool hasNominatedValues) {
         // how many validators have accepted on `v`
         /* 
           For the current node
-          - qs[slotCur][nodeID]: quorum slice
-          - qs[slotCur][nodeID].validators[n]: a validator
-          - qs[slotCur][qs[slotCur][nodeID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
+          - qs[slotCur][myID]: quorum slice
+          - qs[slotCur][myID].validators[n]: a validator
+          - qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
         */
 
         for (id : int[0,N-1]) {
@@ -969,6 +973,9 @@ void processMessageNomination(bool hasNominatedValues) {
             &amp;&amp; !nominationStates[myID].accepted[v]
         ) {
             // !!!: possible tweak-able point
+            /// THIS MEANS JUST IT DOES NOT WANT TO ACCEPT A BLOCKING SET'S DECISION
+            /// AND MAYBE FAKE AS IF IT HAS RIGHT TO SUGGEST A NEW VALUE OR ECHOED THE VALUE....
+            
             nominationStates[myID].accepted[v] = false; /// &lt;--- faulty action (original: true)
             nominationStates[myID].voted[v] = true; /// &lt;--- faulty action (original: false)
         }
@@ -1061,6 +1068,7 @@ void processMessageNomination(bool hasNominatedValues) {
 
 int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
     // ???: 이 함수의 작동 방식?
+    // !!!: possible tweak-able point
     int[0,N] highest = cur_round_in % getTotalValidators(myID);
     int[0,N] current = 0;
 
@@ -3981,7 +3989,7 @@ bool isDoneBallot() {
 			<name x="83" y="-238">SlotOutofBound</name>
 		</location>
 		<location id="id179" x="93" y="-8">
-			<name x="83" y="-42">SlotSuccess</name>
+			<name x="85" y="-42">SlotSuccess</name>
 		</location>
 		<location id="id180" x="-161" y="-8">
 			<name x="-171" y="-42">SlotDone</name>
@@ -4084,6 +4092,12 @@ system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaulty
 			</formula>
 			<comment>Success Possibility (Reachability)
 Purpose: Does there exist an execution path where all slots can be successfully completed?</comment>
+			<result outcome="failure" type="quality" timestamp="2025-06-24 11:19:55 +0900">
+				<option key="--state-representation" value="1"/>
+				<option key="--search-order" value="0"/>
+				<option key="--statespace-consumption" value="2"/>
+				<option key="--diagnostic" value="0"/>
+			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : s_id) not NodeSlot(i).SlotFail
@@ -4149,9 +4163,6 @@ Purpose: Are previous prepare ballots properly managed?</comment>
 			<comment>Deadlock Prevention (Liveness Property)
 Purpose: Does the system not fall into deadlock?</comment>
 			<option key="--diagnostic" value="0"/>
-			<result outcome="success" type="quality" timestamp="2025-06-23 17:05:13 +0900">
-				<option key="--diagnostic" value="0"/>
-			</result>
 		</query>
 	</queries>
 </nta>
