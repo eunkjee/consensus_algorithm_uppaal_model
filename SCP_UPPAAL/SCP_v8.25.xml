@@ -10,7 +10,7 @@
 */
 const int THR = 100; // quorum threshold number
 const int N = 5; // total number of nodes
-const int F = 3; // total number of faulty nodes
+const int F = 1; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
@@ -583,7 +583,6 @@ void processMessageNomination(bool hasNominatedValues) {
             cntValues &gt; (getTotalValidators(myID) - qs[slotCur][myID].threshold) // blocking threshold
             &amp;&amp; !nominationStates[myID].accepted[v]
         ) {
-            // !!!: possible tweak-able point
             nominationStates[myID].accepted[v] = true;
             nominationStates[myID].voted[v] = false;
         }
@@ -624,7 +623,6 @@ void processMessageNomination(bool hasNominatedValues) {
 
         if (cntValues &gt;= qs[slotCur][myID].threshold
             &amp;&amp; !nominationStates[myID].accepted[v]) {
-            // !!!: possible tweak-able point
             nominationStates[myID].accepted[v] = true;
             nominationStates[myID].voted[v] = false;
         }
@@ -658,7 +656,6 @@ void processMessageNomination(bool hasNominatedValues) {
         }
 
         if (cntValues &gt;= qs[slotCur][myID].threshold) {
-            // !!!: possible tweak-able point
             if (!nominationStates[myID].accepted[v]) {
                 nominationStates[myID].accepted[v] = true;
                 nominationStates[myID].voted[v] = false;
@@ -675,7 +672,6 @@ void processMessageNomination(bool hasNominatedValues) {
 }
 
 int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
-    // ???: 이 함수의 작동 방식?
     int[0,N] highest = cur_round_in % getTotalValidators(myID);
     int[0,N] current = 0;
 
@@ -966,19 +962,17 @@ void processMessageNomination(bool hasNominatedValues) {
                 cntValues++; // count for acceptance of my validators on `v`
             }
         }
-
-        // 
+        /// ** ----- FAULTY ACTION APPLICATION POINT ---- ** ///
         if (
             cntValues &gt; (getTotalValidators(myID) - qs[slotCur][myID].threshold) // blocking threshold
             &amp;&amp; !nominationStates[myID].accepted[v]
         ) {
-            // !!!: possible tweak-able point
-            /// THIS MEANS JUST IT DOES NOT WANT TO ACCEPT A BLOCKING SET'S DECISION
-            /// AND MAYBE FAKE AS IF IT HAS RIGHT TO SUGGEST A NEW VALUE OR ECHOED THE VALUE....
             
-            nominationStates[myID].accepted[v] = false; /// &lt;--- faulty action (original: true)
-            nominationStates[myID].voted[v] = true; /// &lt;--- faulty action (original: false)
+            
+            nominationStates[myID].accepted[v] = true; 
+            nominationStates[myID].voted[v] = false;
         }
+        
     }
 
     // quorum threshold check for vote nomination
@@ -1013,10 +1007,9 @@ void processMessageNomination(bool hasNominatedValues) {
                 }
             }
         }
-
+        /// ** ----- FAULTY ACTION APPLICATION POINT ---- ** ///
         if (cntValues &gt;= qs[slotCur][myID].threshold
             &amp;&amp; !nominationStates[myID].accepted[v]) {
-            // !!!: possible tweak-able point
             nominationStates[myID].accepted[v] = true;
             nominationStates[myID].voted[v] = false;
         }
@@ -1048,9 +1041,8 @@ void processMessageNomination(bool hasNominatedValues) {
                 }
             }
         }
-
+        /// ** ----- FAULTY ACTION APPLICATION POINT ---- ** ///
         if (cntValues &gt;= qs[slotCur][myID].threshold) {
-            // !!!: possible tweak-able point
             if (!nominationStates[myID].accepted[v]) {
                 nominationStates[myID].accepted[v] = true;
                 nominationStates[myID].voted[v] = false;
@@ -1067,8 +1059,6 @@ void processMessageNomination(bool hasNominatedValues) {
 }
 
 int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
-    // ???: 이 함수의 작동 방식?
-    // !!!: possible tweak-able point
     int[0,N] highest = cur_round_in % getTotalValidators(myID);
     int[0,N] current = 0;
 
