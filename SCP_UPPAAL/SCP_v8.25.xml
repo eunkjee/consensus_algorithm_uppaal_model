@@ -10,7 +10,7 @@
 */
 const int THR = 100; // quorum threshold number
 const int N = 5; // total number of nodes
-const int F = 1; // total number of faulty nodes
+const int F = 4; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
@@ -967,8 +967,6 @@ void processMessageNomination(bool hasNominatedValues) {
             cntValues &gt; (getTotalValidators(myID) - qs[slotCur][myID].threshold) // blocking threshold
             &amp;&amp; !nominationStates[myID].accepted[v]
         ) {
-            
-            
             nominationStates[myID].accepted[v] = true; 
             nominationStates[myID].voted[v] = false;
         }
@@ -1127,6 +1125,8 @@ void newRound(bool hasNominatedValues) {
             // only if it does not have nominated values
             // if it has some, it won't suggest or vote for new values
             if (!hasNominatedValues) {
+                
+                /// ** ----- FAULTY ACTION APPLICATION POINT ---- ** ///
                 // get a leader
                 nodeIDHighest = getHighestPriorityNode(cur_round[myID]);
                 if (nodeIDHighest == myID) {
