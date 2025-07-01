@@ -3926,15 +3926,6 @@ void doFail() {
     }
 }
 
-bool isSlotUnknown() {
-    for (n : n_id) {
-        if ((cur_round[n] == MAXCNT &amp;&amp; nominatedValues[n] == NOVALUE) || (cur_b_cnt[n] == MAXCNT &amp;&amp; ballotStates[n].curState != SCPExternalize)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool isAllAgreedLocal(int[0,N-1] nID) {
     bool value[V] = NOVALUE;
 
@@ -3952,26 +3943,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
     }
 
     return true;
-}
-
-bool isDoneNomination() {
-    for (n : n_id) {
-        if (cur_round[n] != INFINITY) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool isDoneBallot() {
-    for (n : n_id) {
-        if (ballotStates[n].curState != SCPExternalize) {
-            return false;
-        }
-    }
-    return true;
-}
-</declaration>
+}</declaration>
 		<location id="id177" x="93" y="170">
 			<name x="83" y="136">SlotFail</name>
 		</location>
