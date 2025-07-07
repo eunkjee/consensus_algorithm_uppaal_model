@@ -86,10 +86,6 @@ bool higherlayerInput[N][V] =
     {true},
     {true},
     {true}};
-     
-    // {{true},
-    //  {true},
-    //  {true}};
 
 SCPQuorumSlice qs[V][N] =
     // the entire of nodes are in one quorum
@@ -100,10 +96,6 @@ SCPQuorumSlice qs[V][N] =
       {0, {0, 1, 2, 3, 4}},
       {0, {0, 1, 2, 3, 4}},
       {0, {0, 1, 2, 3, 4}}}};
-       
-    //    {{{0, {0, 1, 2}},
-    //    {0, {0, 1, 2}},
-    //    {0, {0, 1, 2}}}};
 
 SCPNominationState nominationStates[N] =
    {{{false}, {false}},
@@ -111,9 +103,6 @@ SCPNominationState nominationStates[N] =
     {{false}, {false}},
     {{false}, {false}},
     {{false}, {false}}};
-    // {{{false}, {false}},
-    //  {{false}, {false}},
-    //  {{false}, {false}}};
 
 bool nominatedValues[N][V] =
    {{false},
@@ -121,36 +110,30 @@ bool nominatedValues[N][V] =
     {false},
     {false},
     {false}};
-     
-    // {{false},
-    //  {false},
-    //  {false}};
 
 bool ballotDone[N] =
     {false, false, false, false, false};
-//    {false, false, false};
+
 bool canTick[N] =
     {true, true, true, true, true};
-//    {true, true, true};    
+
 bool tickReady[N] =
     {true, true, true, true, true};
-//    {true, true, true};
+
 
 int[0,INFINITY] cur_nRound[N] = // current running nomination round states of each node
-//    {0, 0, 0};
     {0, 0, 0, 0, 0};
 
 int[0,INFINITY] cur_b_cnt[N] =
-//    {0, 0, 0};
     {0, 0, 0, 0, 0};
+    
 int[0,INFINITY] tickNomination[N] =
-//    {0, 0, 0};
     {0, 0, 0, 0, 0};
+    
 int[0,INFINITY] tickBallot[N] =
-//    {0, 0, 0};
     {0, 0, 0, 0, 0};
+    
 int[0,MAXGAP_PROTOCOL*2] protocolFlip[N] =
-//    {0, 0, 0};
     {0, 0, 0, 0, 0};
 
 
