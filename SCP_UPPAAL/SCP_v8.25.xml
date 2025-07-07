@@ -4376,7 +4376,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
 
 // ** Faulty simulation
-system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaultyNomination, NodeFaultyBallot;
+system TickManager, TickWorker, NodeSlot, NodeNomination, NodeFaultyNomination, NodeBallot, NodeFaultyBallot;
 </system>
 	<queries>
 		<option key="--state-representation" value="1"/>
