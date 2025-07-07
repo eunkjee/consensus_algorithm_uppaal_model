@@ -14,7 +14,7 @@ const int F = 4; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
-const int MAXCNT = 14;  // cur_round, cur_b_cnt, SCPBallot.counter (INFINITY - 1: ??)
+const int MAXCNT = 14;  // cur_nRound, cur_b_cnt, SCPBallot.counter (INFINITY - 1: ??)
 const int MAXGAP_PROTOCOL = 1; // assumes no network problems
 
 const int SLOTMAX = V-1; // slot max index
@@ -136,7 +136,7 @@ bool tickReady[N] =
     {true, true, true, true, true};
 //    {true, true, true};
 
-int[0,INFINITY] cur_round[N] = // current running round states of each node
+int[0,INFINITY] cur_nRound[N] = // current running nomination round states of each node
 //    {0, 0, 0};
     {0, 0, 0, 0, 0};
 
@@ -523,7 +523,7 @@ void resetNominationState() {
         A method to reset nomination state
         when a state goes back to `StartNomination`
     */
-    cur_round[myID] = 0;
+    cur_nRound[myID] = 0;
     tickNomination[myID] = 0;
     canTick[myID] = true;
     protocolFlip[myID] = 0;
@@ -727,21 +727,21 @@ void newRound(bool hasNominatedValues) {
     if (qs[slotCur][myID].validators[myID] == myID) {
         
         // if its nomination tick reaches its current round value
-        if (tickNomination[myID] == cur_round[myID]) {
+        if (tickNomination[myID] == cur_nRound[myID]) {
             
             // nomination message passing
             processMessageNomination(hasNominatedValues);
 
             // mark as proceeding next round
-            if (cur_round[myID]&lt;MAXCNT) {
-                cur_round[myID]++;
+            if (cur_nRound[myID]&lt;MAXCNT) {
+                cur_nRound[myID]++;
             }
 
             // only if it does not have nominated values
             // if it has some, it won't suggest or vote for new values
             if (!hasNominatedValues) {
                 // get a leader
-                nodeIDHighest = getHighestPriorityNode(cur_round[myID]);
+                nodeIDHighest = getHighestPriorityNode(cur_nRound[myID]);
                 if (nodeIDHighest == myID) {
                     // if leader is self, get and vote for a higher layer input.
                     getMyHigherlayerInput();
@@ -755,7 +755,7 @@ void newRound(bool hasNominatedValues) {
             tickNomination[myID] = 0;
         }
         // else, increase the tick
-        if (tickNomination[myID] &lt; cur_round[myID]) {
+        if (tickNomination[myID] &lt; cur_nRound[myID]) {
             tickNomination[myID]++;
         }
     }
@@ -889,7 +889,7 @@ void newRound(bool hasNominatedValues) {
 			<source ref="id60"/>
 			<target ref="id59"/>
 			<label kind="synchronisation" x="-161" y="8">nominationDone[myID]?</label>
-			<label kind="assignment" x="-161" y="25">cur_round[myID] = INFINITY</label>
+			<label kind="assignment" x="-161" y="25">cur_nRound[myID] = INFINITY</label>
 		</transition>
 		<transition id="id81">
 			<source ref="id62"/>
@@ -908,7 +908,7 @@ void resetNominationState() {
         A method to reset nomination state
         when a state goes back to `StartNomination`
     */
-    cur_round[myID] = 0;
+    cur_nRound[myID] = 0;
     tickNomination[myID] = 0;
     canTick[myID] = true;
     protocolFlip[myID] = 0;
@@ -1112,14 +1112,14 @@ void newRound(bool hasNominatedValues) {
     if (qs[slotCur][myID].validators[myID] == myID) {
         
         // if its nomination tick reaches its current round value
-        if (tickNomination[myID] == cur_round[myID]) {
+        if (tickNomination[myID] == cur_nRound[myID]) {
             
             // nomination message passing
             processMessageNomination(hasNominatedValues);
 
             // mark as proceeding next round
-            if (cur_round[myID]&lt;MAXCNT) {
-                cur_round[myID]++;
+            if (cur_nRound[myID]&lt;MAXCNT) {
+                cur_nRound[myID]++;
             }
 
             // only if it does not have nominated values
@@ -1128,7 +1128,7 @@ void newRound(bool hasNominatedValues) {
                 
                 /// ** ----- FAULTY ACTION APPLICATION POINT ---- ** ///
                 // get a leader
-                nodeIDHighest = getHighestPriorityNode(cur_round[myID]);
+                nodeIDHighest = getHighestPriorityNode(cur_nRound[myID]);
                 if (nodeIDHighest == myID) {
                     // if leader is self, get and vote for a higher layer input.
                     getMyHigherlayerInput();
@@ -1142,7 +1142,7 @@ void newRound(bool hasNominatedValues) {
             tickNomination[myID] = 0;
         }
         // else, increase the tick
-        if (tickNomination[myID] &lt; cur_round[myID]) {
+        if (tickNomination[myID] &lt; cur_nRound[myID]) {
             tickNomination[myID]++;
         }
     }
@@ -1276,7 +1276,7 @@ void newRound(bool hasNominatedValues) {
 			<source ref="id83"/>
 			<target ref="id82"/>
 			<label kind="synchronisation" x="-161" y="8">nominationDone[myID]?</label>
-			<label kind="assignment" x="-161" y="25">cur_round[myID] = INFINITY</label>
+			<label kind="assignment" x="-161" y="25">cur_nRound[myID] = INFINITY</label>
 		</transition>
 		<transition id="id104">
 			<source ref="id85"/>
@@ -2642,7 +2642,7 @@ void newBCounter() {
 			<source ref="id121"/>
 			<target ref="id117"/>
 			<label kind="synchronisation" x="-391" y="0">tickAdvanceDone[myID]!</label>
-			<label kind="assignment" x="-391" y="17">cur_round[myID] = INFINITY</label>
+			<label kind="assignment" x="-391" y="17">cur_nRound[myID] = INFINITY</label>
 		</transition>
 		<transition id="id126">
 			<source ref="id113"/>
@@ -4085,7 +4085,7 @@ void newBCounter() {
 			<source ref="id154"/>
 			<target ref="id150"/>
 			<label kind="synchronisation" x="-391" y="0">tickAdvanceDone[myID]!</label>
-			<label kind="assignment" x="-391" y="17">cur_round[myID] = INFINITY</label>
+			<label kind="assignment" x="-391" y="17">cur_nRound[myID] = INFINITY</label>
 		</transition>
 		<transition id="id159">
 			<source ref="id146"/>
@@ -4321,7 +4321,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id188">
 			<source ref="id181"/>
 			<target ref="id177"/>
-			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_round[i] == MAXCNT
+			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_nRound[i] == MAXCNT
 &amp;&amp; forall (i : n_id) nominationStates[i].accepted == NOVALUE</label>
 			<label kind="synchronisation" x="-425" y="212">slotFail!</label>
 			<label kind="assignment" x="-425" y="229">doFail()</label>
@@ -4330,7 +4330,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id189">
 			<source ref="id181"/>
 			<target ref="id178"/>
-			<label kind="guard" x="-425" y="-289">(exists (i : n_id) cur_round[i] == MAXCNT
+			<label kind="guard" x="-425" y="-289">(exists (i : n_id) cur_nRound[i] == MAXCNT
 || exists (i : n_id) cur_b_cnt[i] == MAXCNT)
 &amp;&amp; exists (i : n_id) nominationStates[i].accepted != NOVALUE</label>
 			<label kind="synchronisation" x="-425" y="-238">slotTimeout!</label>
