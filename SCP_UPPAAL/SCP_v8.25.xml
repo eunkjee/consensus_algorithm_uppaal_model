@@ -4228,15 +4228,6 @@ bool hasHigherlayerInput() {
     return false;
 }
 
-bool isAllAgreed(const bool &amp;value[V]) {
-    for (n : n_id) {
-        if (ballotStates[n].c.value != value) {
-            return false;
-        }
-    }
-    return true;
-}
-
 void clearInputs(const bool &amp;value[V]) {
     for (v : v_id) {
         if (value[v]) {
