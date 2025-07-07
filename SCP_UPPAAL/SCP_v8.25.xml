@@ -73,7 +73,7 @@ SCPBallotState ballotStates[N];
 // total participants involved for each value
 // used in Slot management
 ///const int totalParticipants[V] = {5};
-const int totalParticipants[V] = {N+1}; /// Not yet to be found an exact cause
+const int totalParticipants[V] = {N}; /// N(deadlock)? / N+1?
 
 const bool NOVALUE[V] = // empty values (no values)
     {false};
