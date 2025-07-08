@@ -132,9 +132,6 @@ int[0,INFINITY] tickNomination[N] =
     
 int[0,INFINITY] tickBallot[N] =
     {0, 0, 0, 0, 0};
-    
-int[0,MAXGAP_PROTOCOL*2] protocolFlip[N] =
-    {0, 0, 0, 0, 0};
 
 
 /// ----- ** CHANNELS
@@ -509,7 +506,7 @@ void resetNominationState() {
     cur_nRound[myID] = 0;
     tickNomination[myID] = 0;
     canTick[myID] = true;
-    protocolFlip[myID] = 0;
+
     for (v : v_id) {
         nominatedValues[myID][v] = false;
         nominationStates[myID].voted[v] = false;
@@ -894,7 +891,7 @@ void resetNominationState() {
     cur_nRound[myID] = 0;
     tickNomination[myID] = 0;
     canTick[myID] = true;
-    protocolFlip[myID] = 0;
+
     for (v : v_id) {
         nominatedValues[myID][v] = false;
         nominationStates[myID].voted[v] = false;
