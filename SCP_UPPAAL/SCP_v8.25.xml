@@ -149,12 +149,9 @@ broadcast chan slotFail;
 broadcast chan slotTimeout;
 broadcast chan slotStarted[SLOTMAX+1];
 
-broadcast chan tickManagerStart;
-broadcast chan tickManagerStop;
 broadcast chan tickStart;
 broadcast chan tickStop;
-
-
+broadcast chan tickManagerStart; // for TickTestApp
 
 
 
@@ -171,8 +168,7 @@ bool isLessValue(const bool &amp;valueL[V], const bool &amp;valueR[V]) {
     for (i = V-1; i &gt;= 0; i--) {
         if (valueL[i] == false &amp;&amp; valueR[i] == true) {
             return true;
-        }
-        else if (valueL[i] == true &amp;&amp; valueR[i] == false) {
+        } else if (valueL[i] == true &amp;&amp; valueR[i] == false) {
             return false;
         }
     }
