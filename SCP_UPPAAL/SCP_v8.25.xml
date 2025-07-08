@@ -15,7 +15,6 @@ const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
 const int MAXCNT = 14;  // cur_nRound, cur_b_cnt, SCPBallot.counter (INFINITY - 1: ??)
-const int MAXGAP_PROTOCOL = 1; // assumes no network problems
 
 const int SLOTMAX = V-1; // slot max index
 
