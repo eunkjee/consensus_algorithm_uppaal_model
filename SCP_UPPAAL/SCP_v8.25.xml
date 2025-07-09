@@ -113,24 +113,21 @@ bool nominatedValues[N][V] =
 bool ballotDone[N] =
     {false, false, false, false, false};
 
-bool canTick[N] =
-    {true, true, true, true, true};
-
 bool tickReady[N] =
     {true, true, true, true, true};
 
-
+int[0,INFINITY] tickNomination[N] =
+    {0, 0, 0, 0, 0};
+    
+int[0,INFINITY] tickBallot[N] =
+    {0, 0, 0, 0, 0};
+    
 int[0,INFINITY] cur_nRound[N] = // current running nomination round states of each node
     {0, 0, 0, 0, 0};
 
 int[0,INFINITY] cur_b_cnt[N] =
     {0, 0, 0, 0, 0};
     
-int[0,INFINITY] tickNomination[N] =
-    {0, 0, 0, 0, 0};
-    
-int[0,INFINITY] tickBallot[N] =
-    {0, 0, 0, 0, 0};
 
 
 /// ----- ** CHANNELS
@@ -469,7 +466,6 @@ void resetNominationState() {
     */
     cur_nRound[myID] = 0;
     tickNomination[myID] = 0;
-    canTick[myID] = true;
 
     for (v : v_id) {
         nominatedValues[myID][v] = false;
@@ -607,9 +603,6 @@ void processMessageNomination(bool hasNominatedValues) {
 
             if (!nominatedValues[myID][v]) {
                 nominatedValues[myID][v] = true;
-                if (hasNominatedValues == false) {
-                    canTick[myID] = false;
-                }
             }
         }
     }
@@ -854,7 +847,6 @@ void resetNominationState() {
     */
     cur_nRound[myID] = 0;
     tickNomination[myID] = 0;
-    canTick[myID] = true;
 
     for (v : v_id) {
         nominatedValues[myID][v] = false;
@@ -992,9 +984,6 @@ void processMessageNomination(bool hasNominatedValues) {
 
             if (!nominatedValues[myID][v]) {
                 nominatedValues[myID][v] = true;
-                if (hasNominatedValues == false) {
-                    canTick[myID] = false;
-                }
             }
         }
     }
@@ -2273,8 +2262,6 @@ void processMessagePrepare() {
             ballotStates[myID].curState = SCPCommit;
             ballotStates[myID].pp.counter = 0;
             ballotStates[myID].pp.value = NOVALUE;
-
-            canTick[myID] = false;
         }
     }
 
@@ -2441,8 +2428,6 @@ void processMessageCommit() {
             ballotStates[myID].h.value = newMessageBallots[0].value;
             ballotStates[myID].curState = SCPExternalize;
             ballotStates[myID].b.counter = INFINITY;
-
-            canTick[myID] = false;
         }
     }
 
@@ -3721,8 +3706,6 @@ void processMessagePrepare() {
             ballotStates[myID].curState = SCPCommit;
             ballotStates[myID].pp.counter = 0;
             ballotStates[myID].pp.value = NOVALUE;
-
-            canTick[myID] = false;
         }
     }
 
@@ -3887,8 +3870,6 @@ void processMessageCommit() {
             ballotStates[myID].h.value = newMessageBallots[0].value;
             ballotStates[myID].curState = SCPExternalize;
             ballotStates[myID].b.counter = INFINITY;
-
-            canTick[myID] = false;
         }
     }
 
