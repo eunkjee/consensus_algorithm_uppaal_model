@@ -612,7 +612,7 @@ int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
     int[0,N] highest = cur_round_in % getTotalValidators(myID);
     int[0,N] current = 0;
 
-    for (id : n_id) {
+    for (id : int[0,N-1]) {
         if (qs[slotCur][myID].validators[id] != N) {
             if (current == highest) { 
                 return qs[slotCur][myID].validators[id];
@@ -993,7 +993,7 @@ int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
     int[0,N] highest = cur_round_in % getTotalValidators(myID);
     int[0,N] current = 0;
 
-    for (id : n_id) {
+    for (id : int[0,N-1]) {
         if (qs[slotCur][myID].validators[id] != N) {
             if (current == highest) { 
                 return qs[slotCur][myID].validators[id];
