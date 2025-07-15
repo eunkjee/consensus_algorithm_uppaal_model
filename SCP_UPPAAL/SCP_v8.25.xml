@@ -79,7 +79,6 @@ const bool NOVALUE[V] = // empty values (no values)
 
 bool higherlayerInput[N][V] =
     // values that nodes want to write on a block
-    /// !!!: faulty nodes should not have any input values!
    {{true},
     {true},
     {true},
