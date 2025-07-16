@@ -27,11 +27,11 @@ const int SCPExternalize = 2;
 
 /// ------ ** TYPE DEFINITIONS
 
-typedef int[0,N-F-1] n_id; // node id (0 to n-f-1)
-typedef int[N-F,N-1] f_id; // fault node id (n-f to n-1)
-typedef int[0,V-1] v_id; // value id (0 to v-1)
-typedef int[0,SLOTMAX] s_id; // slot id
-typedef int[0,N-1] t_id; // tick id
+typedef int[0,N-F-1] n_id;     // node id (0 to n-f-1)
+typedef int[N-F,N-1] f_id;     // fault node id (n-f to n-1)
+typedef int[0,V-1] v_id;       // value id (0 to v-1)
+typedef int[0,SLOTMAX] s_id;   // slot id
+typedef int[0,N-1] t_id;       // tick id
 
 typedef struct {
     int[0,N] threshold;
@@ -71,14 +71,17 @@ SCPBallotState ballotStates[N];
 
 // total participants involved for each value
 // used in Slot management
-///const int totalParticipants[V] = {5};
-const int totalParticipants[V] = {N}; /// N(deadlock)? / N+1?
+
+const int totalParticipants[V] = {N};
 
 const bool NOVALUE[V] = // empty values (no values)
     {false};
 
+
 bool higherlayerInput[N][V] =
-    // values that nodes want to write on a block
+    // 25.07.16
+    // Assumes the values are always correct based on the modeling abstaction level.
+    // indicates if a node has a value to be written.
    {{true},
     {true},
     {true},
@@ -86,14 +89,13 @@ bool higherlayerInput[N][V] =
     {true}};
 
 SCPQuorumSlice qs[V][N] =
-    // the entire of nodes are in one quorum
     // represents an invalid validator as N (e.g., {0, 1, N})
     // {threshold, {validators[N]}}
     {{{0, {0, 1, 2, 3, 4}},
       {0, {0, 1, 2, 3, 4}},
       {0, {0, 1, 2, 3, 4}},
       {0, {0, 1, 2, 3, 4}},
-      {0, {0, 1, 2, 3, 4}}}};
+      {0, {0, 1, 2, 3, 4}}}}; // the entire of nodes are in one quorum
 
 SCPNominationState nominationStates[N] =
    {{{false}, {false}},
@@ -320,8 +322,8 @@ clock x;</declaration>
 int[0,N] cntSlotDone = 0;
 
 bool hasHigherlayerInput() {
-    for (n : n_id) {
-        if (higherlayerInput[n] != NOVALUE) {
+    for (id : int[0,N-1]) {
+        if (higherlayerInput[id] != NOVALUE) {
             return true;
         }
     }
@@ -331,8 +333,8 @@ bool hasHigherlayerInput() {
 void clearInputs(const bool &amp;value[V]) {
     for (v : v_id) {
         if (value[v]) {
-            for (n : n_id) {
-                higherlayerInput[n][v] = false;
+            for (id : int[0,N-1]) {
+                higherlayerInput[id][v] = false;
             }
         }
     }
@@ -358,8 +360,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
         if (qs[slotCur][nID].validators[n] != N) {
             if (value == NOVALUE) {
                 value = ballotStates[qs[slotCur][nID].validators[n]].c.value;
-            }
-            else {
+            } else {
                 if (ballotStates[qs[slotCur][nID].validators[n]].c.value != value) {
                     return false;
                 }
@@ -2090,6 +2091,8 @@ void processMessagePrepare() {
     SCPBallot newMessageBallots[3];
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
+    
+    /// !!!: check the index range if it needs all nodes traversal
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
@@ -2281,6 +2284,7 @@ void processMessageCommit() {
     SCPBallot newMessageBallots[3];
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
+    /// !!!: check the index range if it needs all nodes traversal
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
@@ -3534,6 +3538,7 @@ void processMessagePrepare() {
     SCPBallot newMessageBallots[3];
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
+    /// !!!: check the index range if it needs all nodes traversal
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
@@ -3725,6 +3730,7 @@ void processMessageCommit() {
     SCPBallot newMessageBallots[3];
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
+    /// !!!: check the index range if it needs all nodes traversal
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
