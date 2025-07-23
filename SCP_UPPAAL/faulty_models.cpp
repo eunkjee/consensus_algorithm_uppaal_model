@@ -54,9 +54,6 @@
 
             if (!nominatedValues[myID][v]) {
                 nominatedValues[myID][v] = true;
-                if (hasNominatedValues == false) {
-                    canTick[myID] = false;
-                }
             }
         }
 
@@ -72,8 +69,5 @@
 
             if (!nominatedValues[myID][v]) {
                 nominatedValues[myID][v] = true;
-                if (hasNominatedValues == false) {
-                    canTick[myID] = false;
-                }
             }
         }
