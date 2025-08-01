@@ -1242,60 +1242,7 @@ void sortArr(int[0,N*3] len, int[0,INFINITY]&amp; arr[N*3]) {
     }
 }
 
-/// ----- ** Ballot FUNCTIONS
-void initBallotState() {
-    cur_b_cnt[myID] = 1;
-    ballotStates[myID].b.counter = 1;
-    
-    for (v : v_id) {
-        if (nominatedValues[myID][v] == true 
-        &amp;&amp; ballotStates[myID].b.value[v] == false) {
-            ballotStates[myID].b.value[v] = true;
-            return;
-        }
-    }
-}
-
-void resetBallotState() {
-    cur_b_cnt[myID] = 0;
-    tickBallot[myID] = 0;
-    ballotDone[myID] = false;
-
-    ballotStates[myID].curState = SCPPrepare;
-    ballotStates[myID].b.counter = 0;
-    ballotStates[myID].b.value = NOVALUE;
-    ballotStates[myID].p.counter = 0;
-    ballotStates[myID].p.value = NOVALUE;
-    ballotStates[myID].pp.counter = 0;
-    ballotStates[myID].pp.value = NOVALUE;
-    ballotStates[myID].h.counter = 0;
-    ballotStates[myID].h.value = NOVALUE;
-    ballotStates[myID].c.counter = 0;
-    ballotStates[myID].c.value = NOVALUE;
-}
-
-void updateBValue() {
-    if (ballotStates[myID].h.value != NOVALUE) {
-        // if `h` is NOT empty
-        ballotStates[myID].b.value = ballotStates[myID].h.value;
-
-    } else if (nominatedValues[myID] != NOVALUE) {
-
-        for (v : v_id) {
-            if (nominatedValues[myID][v] == true 
-                &amp;&amp; ballotStates[myID].b.value[v] == false) {
-
-                ballotStates[myID].b.value[v] = true;
-                return;
-            }
-        }
-    }
-    else if (ballotStates[myID].p.value != NOVALUE) {
-        // if `p` is NOT empty
-        ballotStates[myID].b.value = ballotStates[myID].p.value;
-    }
-}
-
+/// ----- ** Ballot checking bool FUNCTIONS
 bool checkAcceptedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candidate) {
     int[0,N] cntQuorumTH = 0;
     bool isVBlocked = false;
@@ -2064,8 +2011,7 @@ bool attemptConfirmCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &
             } else {
                 k++;
             }
-        }
-        else {// find the low boundary
+        } else {// find the low boundary
             if (
                 checkConfirmedCommit(newMessageBallots[0].value, curBoundaries[k], acceptedCounterH)
             ) {
@@ -2080,6 +2026,60 @@ bool attemptConfirmCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &
     return isAgreed;
 }
 
+/// ----- ** Ballot FUNCTIONS
+void initBallotState() {
+    cur_b_cnt[myID] = 1;
+    ballotStates[myID].b.counter = 1;
+    
+    for (v : v_id) {
+        if (nominatedValues[myID][v] == true 
+        &amp;&amp; ballotStates[myID].b.value[v] == false) {
+            ballotStates[myID].b.value[v] = true;
+            return;
+        }
+    }
+}
+
+void resetBallotState() {
+    cur_b_cnt[myID] = 0;
+    tickBallot[myID] = 0;
+    ballotDone[myID] = false;
+
+    ballotStates[myID].curState = SCPPrepare;
+    ballotStates[myID].b.counter = 0;
+    ballotStates[myID].b.value = NOVALUE;
+    ballotStates[myID].p.counter = 0;
+    ballotStates[myID].p.value = NOVALUE;
+    ballotStates[myID].pp.counter = 0;
+    ballotStates[myID].pp.value = NOVALUE;
+    ballotStates[myID].h.counter = 0;
+    ballotStates[myID].h.value = NOVALUE;
+    ballotStates[myID].c.counter = 0;
+    ballotStates[myID].c.value = NOVALUE;
+}
+
+void updateBValue() {
+    if (ballotStates[myID].h.value != NOVALUE) {
+        // if `h` is NOT empty
+        ballotStates[myID].b.value = ballotStates[myID].h.value;
+
+    } else if (nominatedValues[myID] != NOVALUE) {
+
+        for (v : v_id) {
+            if (nominatedValues[myID][v] == true 
+                &amp;&amp; ballotStates[myID].b.value[v] == false) {
+
+                ballotStates[myID].b.value[v] = true;
+                return;
+            }
+        }
+    }
+    else if (ballotStates[myID].p.value != NOVALUE) {
+        // if `p` is NOT empty
+        ballotStates[myID].b.value = ballotStates[myID].p.value;
+    }
+}
+ 
 void processMessagePrepare() {
     bool hasNewBallot = false;
     int[0,N-1] newMessageNode = myID;
@@ -2092,21 +2092,21 @@ void processMessagePrepare() {
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
     
-    /// !!!: check the index range if it needs all nodes traversal
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
                 newMessageNode = qs[slotCur][myID].validators[n];
-            }
-            else {
+            } else {
                 current++;
             }
         }
     }
+    
     if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
 
+    // set newMessageBallots
     if (ballotStates[newMessageNode].curState == SCPPrepare) {
         /// Phase: SCPPrepare
         newMessageBallots[0].counter = ballotStates[newMessageNode].b.counter;
@@ -2148,8 +2148,7 @@ void processMessagePrepare() {
         if (ballotStates[myID].p.counter == 0) {
             ballotStates[myID].p.counter = newBallot.counter;
             ballotStates[myID].p.value = newBallot.value;
-        }
-        else {
+        } else {
             if (
                 ballotStates[myID].p.counter &lt; newBallot.counter
                 || (ballotStates[myID].p.counter == newBallot.counter
@@ -2161,6 +2160,7 @@ void processMessagePrepare() {
                     ballotStates[myID].pp.counter = ballotStates[myID].p.counter;
                     ballotStates[myID].pp.value = ballotStates[myID].p.value;
                 }
+                
                 ballotStates[myID].p.counter = newBallot.counter;
                 ballotStates[myID].p.value = newBallot.value;
             } else if (
@@ -2284,17 +2284,17 @@ void processMessageCommit() {
     SCPBallot newMessageBallots[3];
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
-    /// !!!: check the index range if it needs all nodes traversal
+
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
                 newMessageNode = qs[slotCur][myID].validators[n];
-            }
-            else {
+            } else {
                 current++;
             }
         }
     }
+    
     if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
@@ -2343,8 +2343,7 @@ void processMessageCommit() {
 
             ballotStates[myID].p.counter = newBallot.counter;
             ballotStates[myID].p.value = newBallot.value;
-        }
-        else {
+        } else {
             if (ballotStates[myID].p.counter &lt; newBallot.counter
                 || (ballotStates[myID].p.counter == newBallot.counter
                     &amp;&amp; isLessValue(ballotStates[myID].p.value, newBallot.value))) { // ballotStates[myID].p.value &lt; newBallot.value
@@ -2352,6 +2351,7 @@ void processMessageCommit() {
                     ballotStates[myID].pp.counter = ballotStates[myID].p.counter;
                     ballotStates[myID].pp.value = ballotStates[myID].p.value;
                 }
+                
                 ballotStates[myID].p.counter = newBallot.counter;
                 ballotStates[myID].p.value = newBallot.value;
 
@@ -2448,7 +2448,7 @@ void newBCounter() {
         ) {
             processMessagePrepare();
 
-            if (ballotStates[myID].b.counter&lt;MAXCNT) {
+            if (ballotStates[myID].b.counter &lt; MAXCNT) {
                 ballotStates[myID].b.counter++;
             }
             
@@ -2457,15 +2457,16 @@ void newBCounter() {
             }
 
             updateBValue();
-        }
-        else if ( /// Phase: SCPCommit
+            
+        } else if ( /// Phase: SCPCommit
             ballotStates[myID].curState == SCPCommit
         ) {
             processMessageCommit();
 
-            if (ballotStates[myID].b.counter&lt;MAXCNT) {
+            if (ballotStates[myID].b.counter &lt; MAXCNT) {
                 ballotStates[myID].b.counter++;
             }
+            
             if (cur_b_cnt[myID] &lt; MAXCNT) {
                 cur_b_cnt[myID]++;
             }
@@ -2669,7 +2670,7 @@ void newBCounter() {
 
 /// ----- ** HELPER FUNCTIONS
 void sortArr(int[0,N*3] len, int[0,INFINITY]&amp; arr[N*3]) {
-    int[0,N*3] i,j,maxIndex;
+    int[0,N*3] i, j, maxIndex;
     int[0,INFINITY] temp;
 
     for (i=0; i&lt;len; i++) {
@@ -2686,60 +2687,7 @@ void sortArr(int[0,N*3] len, int[0,INFINITY]&amp; arr[N*3]) {
     }
 }
 
-/// ----- ** Ballot FUNCTIONS
-void initBallotState() {
-    cur_b_cnt[myID] = 1;
-    ballotStates[myID].b.counter = 1;
-    
-    for (v : v_id) {
-        if (nominatedValues[myID][v] == true 
-        &amp;&amp; ballotStates[myID].b.value[v] == false) {
-            ballotStates[myID].b.value[v] = true;
-            return;
-        }
-    }
-}
-
-void resetBallotState() {
-    cur_b_cnt[myID] = 0;
-    tickBallot[myID] = 0;
-    ballotDone[myID] = false;
-
-    ballotStates[myID].curState = SCPPrepare;
-    ballotStates[myID].b.counter = 0;
-    ballotStates[myID].b.value = NOVALUE;
-    ballotStates[myID].p.counter = 0;
-    ballotStates[myID].p.value = NOVALUE;
-    ballotStates[myID].pp.counter = 0;
-    ballotStates[myID].pp.value = NOVALUE;
-    ballotStates[myID].h.counter = 0;
-    ballotStates[myID].h.value = NOVALUE;
-    ballotStates[myID].c.counter = 0;
-    ballotStates[myID].c.value = NOVALUE;
-}
-
-void updateBValue() {
-    if (ballotStates[myID].h.value != NOVALUE) {
-        // if `h` is NOT empty
-        ballotStates[myID].b.value = ballotStates[myID].h.value;
-
-    } else if (nominatedValues[myID] != NOVALUE) {
-
-        for (v : v_id) {
-            if (nominatedValues[myID][v] == true 
-                &amp;&amp; ballotStates[myID].b.value[v] == false) {
-
-                ballotStates[myID].b.value[v] = true;
-                return;
-            }
-        }
-    }
-    else if (ballotStates[myID].p.value != NOVALUE) {
-        // if `p` is NOT empty
-        ballotStates[myID].b.value = ballotStates[myID].p.value;
-    }
-}
-
+/// ----- ** Ballot checking bool FUNCTIONS
 bool checkAcceptedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candidate) {
     int[0,N] cntQuorumTH = 0;
     bool isVBlocked = false;
@@ -2762,8 +2710,8 @@ bool checkAcceptedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candida
                         ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter != 0
                         &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
                             &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter &gt;= candidate.counter)
-                    ) || 
-                    ( // pp
+                    ) 
+                    || ( // pp
                         ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.counter != 0
                         &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.value == candidate.value
                             &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.counter &gt;= candidate.counter)
@@ -2862,8 +2810,8 @@ bool checkAcceptedPrepare(const SCPBallot &amp;candidate) {
                         ballotStates[qs[slotCur][myID].validators[n]].p.counter != 0
                         &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].p.value == candidate.value
                             &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].p.counter &gt;= candidate.counter)
-                    ) || 
-                    ( // pp
+                    ) 
+                    || ( // pp
                         ballotStates[qs[slotCur][myID].validators[n]].pp.counter != 0
                             &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].pp.value == candidate.value
                             &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].pp.counter &gt;= candidate.counter)
@@ -3049,8 +2997,8 @@ bool checkConfirmedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candid
                         ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter != 0
                         &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
                             &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter &gt;= candidate.counter)
-                    ) || 
-                    ( // pp
+                    ) 
+                    || ( // pp
                         ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.counter != 0
                         &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.value == candidate.value
                             &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.counter &gt;= candidate.counter)
@@ -3284,8 +3232,7 @@ bool checkAcceptedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counter
                 ].curState == SCPPrepare
             ) {
                 // do nothing
-            }
-            else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPCommit
                 ballotStates[
                     qs[slotCur][myID].validators[n]
                 ].curState == SCPCommit
@@ -3295,8 +3242,7 @@ bool checkAcceptedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counter
                         &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].h.counter &gt;= counterH)) {
                     cntVBlockTH++;
                 }
-            }
-            else { /// Phase: SCPExternalize
+            } else { /// Phase: SCPExternalize
                 if (ballotStates[qs[slotCur][myID].validators[n]].c.value == ballotValue
                     &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].c.counter &lt;= counterC) {
                     cntVBlockTH++;
@@ -3340,8 +3286,8 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
                 if (ballotStates[qs[slotCur][myID].validators[n]].h.counter != 0) { // h
                     curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
                 }
-            }
-            else if ( /// Phase: SCPCommit
+
+            } else if ( /// Phase: SCPCommit
                 ballotStates[
                     qs[slotCur][myID].validators[n]
                 ].curState == SCPCommit
@@ -3349,8 +3295,8 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
             ) {
                 curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
                 curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
-            }
-            else { /// Phase: SCPExternalize
+                
+            } else { /// Phase: SCPExternalize
                 if (ballotStates[qs[slotCur][myID].validators[n]].c.value == newMessageBallots[0].value) {
                     curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
                     curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
@@ -3378,8 +3324,7 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
             } else {
                 k++;
             }
-        }
-        else {// find the low boundary
+        } else {// find the low boundary
             if (
                 checkAcceptedCommit(newMessageBallots[0].value, curBoundaries[k], acceptedCounterH)
             ) {
@@ -3511,8 +3456,7 @@ bool attemptConfirmCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &
             } else {
                 k++;
             }
-        }
-        else {// find the low boundary
+        } else {// find the low boundary
             if (
                 checkConfirmedCommit(newMessageBallots[0].value, curBoundaries[k], acceptedCounterH)
             ) {
@@ -3527,6 +3471,60 @@ bool attemptConfirmCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &
     return isAgreed;
 }
 
+/// ----- ** Ballot FUNCTIONS
+void initBallotState() {
+    cur_b_cnt[myID] = 1;
+    ballotStates[myID].b.counter = 1;
+    
+    for (v : v_id) {
+        if (nominatedValues[myID][v] == true 
+        &amp;&amp; ballotStates[myID].b.value[v] == false) {
+            ballotStates[myID].b.value[v] = true;
+            return;
+        }
+    }
+}
+
+void resetBallotState() {
+    cur_b_cnt[myID] = 0;
+    tickBallot[myID] = 0;
+    ballotDone[myID] = false;
+
+    ballotStates[myID].curState = SCPPrepare;
+    ballotStates[myID].b.counter = 0;
+    ballotStates[myID].b.value = NOVALUE;
+    ballotStates[myID].p.counter = 0;
+    ballotStates[myID].p.value = NOVALUE;
+    ballotStates[myID].pp.counter = 0;
+    ballotStates[myID].pp.value = NOVALUE;
+    ballotStates[myID].h.counter = 0;
+    ballotStates[myID].h.value = NOVALUE;
+    ballotStates[myID].c.counter = 0;
+    ballotStates[myID].c.value = NOVALUE;
+}
+
+void updateBValue() {
+    if (ballotStates[myID].h.value != NOVALUE) {
+        // if `h` is NOT empty
+        ballotStates[myID].b.value = ballotStates[myID].h.value;
+
+    } else if (nominatedValues[myID] != NOVALUE) {
+
+        for (v : v_id) {
+            if (nominatedValues[myID][v] == true 
+                &amp;&amp; ballotStates[myID].b.value[v] == false) {
+
+                ballotStates[myID].b.value[v] = true;
+                return;
+            }
+        }
+    }
+    else if (ballotStates[myID].p.value != NOVALUE) {
+        // if `p` is NOT empty
+        ballotStates[myID].b.value = ballotStates[myID].p.value;
+    }
+}
+ 
 void processMessagePrepare() {
     bool hasNewBallot = false;
     int[0,N-1] newMessageNode = myID;
@@ -3538,21 +3536,22 @@ void processMessagePrepare() {
     SCPBallot newMessageBallots[3];
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
-    /// !!!: check the index range if it needs all nodes traversal
+    
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
                 newMessageNode = qs[slotCur][myID].validators[n];
-            }
-            else {
+            } else {
                 current++;
             }
         }
     }
+    
     if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
 
+    // set newMessageBallots
     if (ballotStates[newMessageNode].curState == SCPPrepare) {
         /// Phase: SCPPrepare
         newMessageBallots[0].counter = ballotStates[newMessageNode].b.counter;
@@ -3594,8 +3593,7 @@ void processMessagePrepare() {
         if (ballotStates[myID].p.counter == 0) {
             ballotStates[myID].p.counter = newBallot.counter;
             ballotStates[myID].p.value = newBallot.value;
-        }
-        else {
+        } else {
             if (
                 ballotStates[myID].p.counter &lt; newBallot.counter
                 || (ballotStates[myID].p.counter == newBallot.counter
@@ -3607,6 +3605,7 @@ void processMessagePrepare() {
                     ballotStates[myID].pp.counter = ballotStates[myID].p.counter;
                     ballotStates[myID].pp.value = ballotStates[myID].p.value;
                 }
+                
                 ballotStates[myID].p.counter = newBallot.counter;
                 ballotStates[myID].p.value = newBallot.value;
             } else if (
@@ -3730,17 +3729,17 @@ void processMessageCommit() {
     SCPBallot newMessageBallots[3];
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
-    /// !!!: check the index range if it needs all nodes traversal
+
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
                 newMessageNode = qs[slotCur][myID].validators[n];
-            }
-            else {
+            } else {
                 current++;
             }
         }
     }
+    
     if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
@@ -3789,8 +3788,7 @@ void processMessageCommit() {
 
             ballotStates[myID].p.counter = newBallot.counter;
             ballotStates[myID].p.value = newBallot.value;
-        }
-        else {
+        } else {
             if (ballotStates[myID].p.counter &lt; newBallot.counter
                 || (ballotStates[myID].p.counter == newBallot.counter
                     &amp;&amp; isLessValue(ballotStates[myID].p.value, newBallot.value))) { // ballotStates[myID].p.value &lt; newBallot.value
@@ -3798,6 +3796,7 @@ void processMessageCommit() {
                     ballotStates[myID].pp.counter = ballotStates[myID].p.counter;
                     ballotStates[myID].pp.value = ballotStates[myID].p.value;
                 }
+                
                 ballotStates[myID].p.counter = newBallot.counter;
                 ballotStates[myID].p.value = newBallot.value;
 
@@ -3850,10 +3849,12 @@ void processMessageCommit() {
     }
 
     // quorum threshold check for accept commit ballots (attemptConfirmCommit)
-    if (// Phase not SCPPrepare
+    if ( // Phase not SCPPrepare
         ballotStates[newMessageNode].curState != SCPPrepare
     ) {
+
         newMessageBallots[0].counter = ballotStates[newMessageNode].h.counter;
+
         if ( /// Phase: SCPExternalize
             ballotStates[newMessageNode].curState == SCPExternalize
         ) {
@@ -3879,6 +3880,7 @@ void processMessageCommit() {
     }
 
     if (ballotStates[myID].h.counter &gt; ballotStates[myID].b.counter) {
+
         ballotStates[myID].b.counter = ballotStates[myID].h.counter;
         ballotStates[myID].b.value = ballotStates[myID].h.value;
     }
@@ -3891,22 +3893,25 @@ void newBCounter() {
         ) {
             processMessagePrepare();
 
-            if (ballotStates[myID].b.counter&lt;MAXCNT) {
+            if (ballotStates[myID].b.counter &lt; MAXCNT) {
                 ballotStates[myID].b.counter++;
             }
+            
             if (cur_b_cnt[myID] &lt; MAXCNT) {
                 cur_b_cnt[myID]++;
             }
+
             updateBValue();
-        }
-        else if ( /// Phase: SCPCommit
+            
+        } else if ( /// Phase: SCPCommit
             ballotStates[myID].curState == SCPCommit
         ) {
             processMessageCommit();
 
-            if (ballotStates[myID].b.counter&lt;MAXCNT) {
+            if (ballotStates[myID].b.counter &lt; MAXCNT) {
                 ballotStates[myID].b.counter++;
             }
+            
             if (cur_b_cnt[myID] &lt; MAXCNT) {
                 cur_b_cnt[myID]++;
             }
