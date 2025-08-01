@@ -2088,10 +2088,11 @@ void processMessagePrepare() {
     int[0,INFINITY] acceptedCounterC = 0;
     int[0,INFINITY] acceptedCounterH = 0;
     SCPBallot newBallot;
-    SCPBallot newMessageBallots[3];
+    SCPBallot newMessageBallots[3]; // to store 3 ballots used at each phase
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
     
+    // update newMessageNode
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
@@ -2102,6 +2103,7 @@ void processMessagePrepare() {
         }
     }
     
+    // if new message is not valid, return.
     if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
@@ -2109,28 +2111,37 @@ void processMessagePrepare() {
     // set newMessageBallots
     if (ballotStates[newMessageNode].curState == SCPPrepare) {
         /// Phase: SCPPrepare
+        // b
         newMessageBallots[0].counter = ballotStates[newMessageNode].b.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        // p
         newMessageBallots[1].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[1].value = ballotStates[newMessageNode].p.value;
+        // p'
         newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
         newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
 
     } else if (ballotStates[newMessageNode].curState == SCPCommit) {
         /// Phase: SCPCommit
+        // p.n, b.x
         newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        // INFINITY, b.x
         newMessageBallots[1].counter = INFINITY;
         newMessageBallots[1].value = ballotStates[newMessageNode].b.value;
+        // 0, NULL
         newMessageBallots[2].counter = 0;
         newMessageBallots[2].value = NOVALUE;
 
     } else {
         /// Phase: SCPExternalize
+        // INFINITY, c.x
         newMessageBallots[0].counter = INFINITY;
         newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
+        // 0, NULL
         newMessageBallots[1].counter = 0;
         newMessageBallots[1].value = NOVALUE;
+        // 0, NULL
         newMessageBallots[2].counter = 0;
         newMessageBallots[2].value = NOVALUE;
     }
@@ -2163,6 +2174,7 @@ void processMessagePrepare() {
                 
                 ballotStates[myID].p.counter = newBallot.counter;
                 ballotStates[myID].p.value = newBallot.value;
+                
             } else if (
                 ballotStates[myID].p.counter &gt; newBallot.counter
                 || (ballotStates[myID].p.counter == newBallot.counter
@@ -2285,6 +2297,7 @@ void processMessageCommit() {
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
 
+    // update newMessageNode
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
@@ -2295,36 +2308,47 @@ void processMessageCommit() {
         }
     }
     
+    // if new message is not valid, return.
     if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
-
+    
+    // set newMessageBallots
     if ( /// Phase: SCPPrepare
         ballotStates[newMessageNode].curState == SCPPrepare
     ) {
+        // b
         newMessageBallots[0].counter = ballotStates[newMessageNode].b.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        // p
         newMessageBallots[1].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[1].value = ballotStates[newMessageNode].p.value;
+        // p'
         newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
         newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
 
     } else if ( /// Phase: SCPCommit
         ballotStates[newMessageNode].curState == SCPCommit
     ) {
+        // p.n, b.x
         newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        // INFINITY, b.x
         newMessageBallots[1].counter = INFINITY;
         newMessageBallots[1].value = ballotStates[newMessageNode].b.value;
+        // 0, NULL
         newMessageBallots[2].counter = 0;
         newMessageBallots[2].value = NOVALUE;
 
     }
     else { /// Phase: SCPExternalize
+        // INFINITY, c.x
         newMessageBallots[0].counter = INFINITY;
         newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
+        // 0, NULL
         newMessageBallots[1].counter = 0;
         newMessageBallots[1].value = NOVALUE;
+        // 0, NULL
         newMessageBallots[2].counter = 0;
         newMessageBallots[2].value = NOVALUE;
     }
@@ -2347,7 +2371,9 @@ void processMessageCommit() {
             if (ballotStates[myID].p.counter &lt; newBallot.counter
                 || (ballotStates[myID].p.counter == newBallot.counter
                     &amp;&amp; isLessValue(ballotStates[myID].p.value, newBallot.value))) { // ballotStates[myID].p.value &lt; newBallot.value
+                        
                 if (ballotStates[myID].p.value != newBallot.value) {
+                    
                     ballotStates[myID].pp.counter = ballotStates[myID].p.counter;
                     ballotStates[myID].pp.value = ballotStates[myID].p.value;
                 }
@@ -3533,10 +3559,11 @@ void processMessagePrepare() {
     int[0,INFINITY] acceptedCounterC = 0;
     int[0,INFINITY] acceptedCounterH = 0;
     SCPBallot newBallot;
-    SCPBallot newMessageBallots[3];
+    SCPBallot newMessageBallots[3]; // to store 3 ballots used at each phase
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
     
+    // update newMessageNode
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
@@ -3547,6 +3574,7 @@ void processMessagePrepare() {
         }
     }
     
+    // if new message is not valid, return.
     if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
@@ -3554,28 +3582,37 @@ void processMessagePrepare() {
     // set newMessageBallots
     if (ballotStates[newMessageNode].curState == SCPPrepare) {
         /// Phase: SCPPrepare
+        // b
         newMessageBallots[0].counter = ballotStates[newMessageNode].b.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        // p
         newMessageBallots[1].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[1].value = ballotStates[newMessageNode].p.value;
+        // p'
         newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
         newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
 
     } else if (ballotStates[newMessageNode].curState == SCPCommit) {
         /// Phase: SCPCommit
+        // p.n, b.x
         newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        // INFINITY, b.x
         newMessageBallots[1].counter = INFINITY;
         newMessageBallots[1].value = ballotStates[newMessageNode].b.value;
+        // 0, NULL
         newMessageBallots[2].counter = 0;
         newMessageBallots[2].value = NOVALUE;
 
     } else {
         /// Phase: SCPExternalize
+        // INFINITY, c.x
         newMessageBallots[0].counter = INFINITY;
         newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
+        // 0, NULL
         newMessageBallots[1].counter = 0;
         newMessageBallots[1].value = NOVALUE;
+        // 0, NULL
         newMessageBallots[2].counter = 0;
         newMessageBallots[2].value = NOVALUE;
     }
@@ -3608,6 +3645,7 @@ void processMessagePrepare() {
                 
                 ballotStates[myID].p.counter = newBallot.counter;
                 ballotStates[myID].p.value = newBallot.value;
+                
             } else if (
                 ballotStates[myID].p.counter &gt; newBallot.counter
                 || (ballotStates[myID].p.counter == newBallot.counter
@@ -3730,6 +3768,7 @@ void processMessageCommit() {
 
     newMessageNodeIndex = cur_b_cnt[myID] % getTotalValidators(myID);
 
+    // update newMessageNode
     for (n : n_id) {
         if (qs[slotCur][myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
@@ -3740,36 +3779,47 @@ void processMessageCommit() {
         }
     }
     
+    // if new message is not valid, return.
     if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
-
+    
+    // set newMessageBallots
     if ( /// Phase: SCPPrepare
         ballotStates[newMessageNode].curState == SCPPrepare
     ) {
+        // b
         newMessageBallots[0].counter = ballotStates[newMessageNode].b.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        // p
         newMessageBallots[1].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[1].value = ballotStates[newMessageNode].p.value;
+        // p'
         newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
         newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
 
     } else if ( /// Phase: SCPCommit
         ballotStates[newMessageNode].curState == SCPCommit
     ) {
+        // p.n, b.x
         newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
+        // INFINITY, b.x
         newMessageBallots[1].counter = INFINITY;
         newMessageBallots[1].value = ballotStates[newMessageNode].b.value;
+        // 0, NULL
         newMessageBallots[2].counter = 0;
         newMessageBallots[2].value = NOVALUE;
 
     }
     else { /// Phase: SCPExternalize
+        // INFINITY, c.x
         newMessageBallots[0].counter = INFINITY;
         newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
+        // 0, NULL
         newMessageBallots[1].counter = 0;
         newMessageBallots[1].value = NOVALUE;
+        // 0, NULL
         newMessageBallots[2].counter = 0;
         newMessageBallots[2].value = NOVALUE;
     }
@@ -3792,7 +3842,9 @@ void processMessageCommit() {
             if (ballotStates[myID].p.counter &lt; newBallot.counter
                 || (ballotStates[myID].p.counter == newBallot.counter
                     &amp;&amp; isLessValue(ballotStates[myID].p.value, newBallot.value))) { // ballotStates[myID].p.value &lt; newBallot.value
+                        
                 if (ballotStates[myID].p.value != newBallot.value) {
+                    
                     ballotStates[myID].pp.counter = ballotStates[myID].p.counter;
                     ballotStates[myID].pp.value = ballotStates[myID].p.value;
                 }
