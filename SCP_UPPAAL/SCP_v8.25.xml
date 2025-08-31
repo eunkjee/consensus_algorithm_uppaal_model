@@ -86,8 +86,6 @@ bool higherlayerInput[N][V] =
     {true},
     {true},
     {true},
-    {true},
-    {true},
     {true}};
 
 SCPQuorumSlice qs[V][N] =
