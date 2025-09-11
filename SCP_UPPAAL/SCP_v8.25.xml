@@ -8,7 +8,7 @@
     if F != 0, 
     `NodeFaultyNomination`, `NodeFaultyBallot` should be added in System declarations.
 */
-const int THR = 100; // quorum threshold number
+const int THR = 10; // quorum threshold number
 const int N = 5; // total number of nodes
 const int F = 4; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
