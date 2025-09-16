@@ -4384,10 +4384,10 @@ void newBCounter() {
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaulty;
 
 // ** Basic simulation
-//system TickManager, TickWorker, NodeSlot, NodeNomination, NodeBallot;
+//system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
 
 // ** Faulty simulation
-system TickManager, TickWorker, NodeSlot, NodeNomination, NodeFaultyNomination, NodeBallot, NodeFaultyBallot;
+system NodeSlot, NodeNomination, NodeFaultyNomination, NodeBallot, NodeFaultyBallot, TickManager, TickWorker;
 </system>
 	<queries>
 		<option key="--state-representation" value="1"/>
