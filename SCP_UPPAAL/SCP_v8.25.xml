@@ -399,7 +399,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<label kind="guard" x="-289" y="-161">forall (i : n_id) nominatedValues[i] != NOVALUE
 &amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE
 &amp;&amp; cntSlotDone == totalParticipants[slotID]-F</label>
-			<label kind="comments" x="-289" y="-187">If nomination &amp; ballot processes of intact nodes are done without faulty nodes</label>
+			<label kind="comments" x="-289" y="-187">If nomination and ballot processes of intact nodes are done without faulty nodes</label>
 			<nail x="-297" y="-93"/>
 			<nail x="-161" y="-93"/>
 		</transition>
