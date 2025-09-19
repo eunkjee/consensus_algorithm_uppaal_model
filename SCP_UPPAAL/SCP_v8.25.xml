@@ -496,10 +496,10 @@ void initNominationState() {
 
     if (qs[slotCur][myID].threshold == 0) { 
         // update a threshold in `qs` for nodeID (the template parameter)
-        int minQuorumCount = totalValidators*THR/100 + 1;
-        qs[slotCur][myID].threshold = (minQuorumCount &gt;= totalValidators) 
-                                        ? totalValidators 
-                                        : minQuorumCount ;
+        int thr_numerator = totalValidators*THR;
+        qs[slotCur][myID].threshold = (thr_numerator % 100 == 0) 
+                                        ? thr_numerator/100 
+                                        : thr_numerator/100 + 1;
     }
 }
 
@@ -878,10 +878,10 @@ void initNominationState() {
 
     if (qs[slotCur][myID].threshold == 0) { 
         // update a threshold in `qs` for nodeID (the template parameter)
-        int minQuorumCount = totalValidators*THR/100 + 1;
-        qs[slotCur][myID].threshold = (minQuorumCount &gt;= totalValidators) 
-                                        ? totalValidators 
-                                        : minQuorumCount ;
+        int thr_numerator = totalValidators*THR;
+        qs[slotCur][myID].threshold = (thr_numerator % 100 == 0) 
+                                        ? thr_numerator/100 
+                                        : thr_numerator/100 + 1;
     }
 }
 
