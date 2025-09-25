@@ -849,7 +849,7 @@ void newRound(bool hasNominatedValues) {
 		</transition>
 	</template>
 	<template>
-		<name>NodeFaultyNomination</name>
+		<name>FaultyNodeNomination</name>
 		<parameter>const f_id myID</parameter>
 		<declaration>
 
@@ -2703,7 +2703,7 @@ void newBCounter() {
 		</transition>
 	</template>
 	<template>
-		<name>NodeFaultyBallot</name>
+		<name>FaultyNodeBallot</name>
 		<parameter>const f_id myID</parameter>
 		<declaration>
 
@@ -4400,7 +4400,7 @@ void newBCounter() {
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
 
 // ** Faulty simulation
-system NodeSlot, NodeNomination, NodeFaultyNomination, NodeBallot, NodeFaultyBallot, TickManager, TickWorker;
+system NodeSlot, NodeNomination, FaultyNodeNomination, NodeBallot, FaultyNodeBallot, TickManager, TickWorker;
 </system>
 	<queries>
 		<option key="--state-representation" value="1"/>
