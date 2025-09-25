@@ -6,15 +6,15 @@
 /// ----- ** GLOBAL CONSTANTS
 /*
     if F != 0, 
-    `NodeFaultyNomination`, `NodeFaultyBallot` should be added in System declarations.
+    `FaultyNodeNomination`, `FaultyNodeBallot` should be added in System declarations.
 */
-const int THR = 100; // quorum threshold number
+const int THRESHOLD_PERCENT = 100; // Quorum Set Agreement Percentage for Quorum Slice Formation (System-wide)
 const int N = 5; // total number of nodes
 const int F = 4; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
-const int MAXCNT = 14;  // cur_nRound, cur_b_cnt, SCPBallot.counter (INFINITY - 1: ??)
+const int MAXCNT = 14;  // cur_nRound, cur_b_cnt, SCPBallot.counter
 
 const int SLOTMAX = V-1; // slot max index
 
@@ -496,7 +496,7 @@ void initNominationState() {
 
     if (qs[slotCur][myID].threshold == 0) { 
         // update a threshold in `qs` for nodeID (the template parameter)
-        int thr_numerator = totalValidators*THR;
+        int thr_numerator = totalValidators*THRESHOLD_PERCENTR;
         qs[slotCur][myID].threshold = (thr_numerator % 100 == 0) 
                                         ? thr_numerator/100 
                                         : thr_numerator/100 + 1;
@@ -878,7 +878,7 @@ void initNominationState() {
 
     if (qs[slotCur][myID].threshold == 0) { 
         // update a threshold in `qs` for nodeID (the template parameter)
-        int thr_numerator = totalValidators*THR;
+        int thr_numerator = totalValidators*THRESHOLD_PERCENT;
         qs[slotCur][myID].threshold = (thr_numerator % 100 == 0) 
                                         ? thr_numerator/100 
                                         : thr_numerator/100 + 1;
