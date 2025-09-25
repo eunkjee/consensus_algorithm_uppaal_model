@@ -36,7 +36,7 @@ typedef int[0,N-1] t_id;       // tick id
 typedef struct {
     int[0,N] threshold;
     int[0,N] validators[N]; // reserving as many as N, stores ids
-} SCPQuorumSlice;
+} SCPQuorumSet;
 
 // nomination
 typedef struct {
@@ -88,7 +88,7 @@ bool higherlayerInput[N][V] =
     {true},
     {true}};
 
-SCPQuorumSlice qs[V][N] =
+SCPQuorumSet qs[V][N] =
     // represents an invalid validator as N (e.g., {0, 1, N})
     // {threshold, {validators[N]}}
     {{{0, {0, 1, 2, 3, 4}},
@@ -505,7 +505,7 @@ void initNominationState() {
 
 void processMessageNomination(bool hasNominatedValues) {
     int[0,N] cntValues = 0; // node count
-    int[0,N] cntValues_qs = 0; // node count in quorum slice
+    int[0,N] cntValues_qs = 0; // node count in quorum set
 
     // blocking threshold check for accept nomination
     for (v : v_id) {
@@ -514,7 +514,7 @@ void processMessageNomination(bool hasNominatedValues) {
         // how many validators have accepted on `v`
         /* 
           For the current node
-          - qs[slotCur][myID]: quorum slice
+          - qs[slotCur][myID]: quorum set
           - qs[slotCur][myID].validators[n]: a validator
           - qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
         */
@@ -673,7 +673,7 @@ void doEchoing(int[0,N] nodeIDHighest) {
 void newRound(bool hasNominatedValues) {
     int[0,N] nodeIDHighest;
 
-    // check if itself exists in its quorum slice
+    // check if itself exists in its quorum set
     if (qs[slotCur][myID].validators[myID] == myID) {
         
         // if its nomination tick reaches its current round value
@@ -887,7 +887,7 @@ void initNominationState() {
 
 void processMessageNomination(bool hasNominatedValues) {
     int[0,N] cntValues = 0; // node count
-    int[0,N] cntValues_qs = 0; // node count in quorum slice
+    int[0,N] cntValues_qs = 0; // node count in quorum set
 
     // blocking threshold check for accept nomination
     for (v : v_id) {
@@ -896,7 +896,7 @@ void processMessageNomination(bool hasNominatedValues) {
         // how many validators have accepted on `v`
         /* 
           For the current node
-          - qs[slotCur][myID]: quorum slice
+          - qs[slotCur][myID]: quorum set
           - qs[slotCur][myID].validators[n]: a validator
           - qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
         */
@@ -1055,7 +1055,7 @@ void doEchoing(int[0,N] nodeIDHighest) {
 void newRound(bool hasNominatedValues) {
     int[0,N] nodeIDHighest;
 
-    // check if itself exists in its quorum slice
+    // check if itself exists in its quorum set
     if (qs[slotCur][myID].validators[myID] == myID) {
         
         // if its nomination tick reaches its current round value
