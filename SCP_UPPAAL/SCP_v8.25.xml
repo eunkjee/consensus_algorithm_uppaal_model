@@ -496,7 +496,7 @@ void initNominationState() {
 
     if (qs[slotCur][myID].threshold == 0) { 
         // update a threshold in `qs` for nodeID (the template parameter)
-        int thr_numerator = totalValidators*THRESHOLD_PERCENTR;
+        int thr_numerator = totalValidators*THRESHOLD_PERCENT;
         qs[slotCur][myID].threshold = (thr_numerator % 100 == 0) 
                                         ? thr_numerator/100 
                                         : thr_numerator/100 + 1;
