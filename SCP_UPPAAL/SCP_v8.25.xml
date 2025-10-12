@@ -10,7 +10,7 @@
 */
 const int THRESHOLD_PERCENT = 100; // Quorum Set Agreement Percentage for Quorum Slice Formation (System-wide)
 const int N = 5; // total number of nodes
-const int F = 4; // total number of faulty nodes
+const int F = 1; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
@@ -4380,7 +4380,7 @@ void newBCounter() {
 		</transition>
 	</template>
 	<template>
-		<name>NodeFaulty</name>
+		<name>SilentNode</name>
 		<parameter>const f_id nodeID</parameter>
 		<location id="id192" x="0" y="0">
 		</location>
@@ -4399,9 +4399,11 @@ void newBCounter() {
 // ** Basic simulation
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
 
-// ** Faulty simulation
-system NodeSlot, NodeNomination, FaultyNodeNomination, NodeBallot, FaultyNodeBallot, TickManager, TickWorker;
-</system>
+// ** Silent Fault simulation
+system NodeSlot, NodeNomination, NodeBallot, SilentNode, TickManager, TickWorker;
+
+// ** Vote-withholding Fault simulation
+//system NodeSlot, NodeNomination, FaultyNodeNomination, NodeBallot, FaultyNodeBallot, TickManager, TickWorker;</system>
 	<queries>
 		<option key="--state-representation" value="1"/>
 		<option key="--search-order" value="0"/>
