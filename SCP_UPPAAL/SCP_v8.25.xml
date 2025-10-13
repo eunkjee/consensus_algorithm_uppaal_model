@@ -4174,6 +4174,28 @@ void newBCounter() {
 		</transition>
 	</template>
 	<template>
+		<name>SilentNode</name>
+		<parameter>const f_id nodeID</parameter>
+		<location id="id147" x="0" y="0">
+		</location>
+		<location id="id148" x="102" y="0">
+			<committed/>
+		</location>
+		<init ref="id147"/>
+		<transition id="id149">
+			<source ref="id148"/>
+			<target ref="id147"/>
+			<label kind="synchronisation" x="-34" y="-59">tickAdvanceDone[nodeID]!</label>
+			<nail x="51" y="-25"/>
+		</transition>
+		<transition id="id150">
+			<source ref="id147"/>
+			<target ref="id148"/>
+			<label kind="synchronisation" x="-17" y="42">tickAdvance[nodeID]?</label>
+			<nail x="51" y="25"/>
+		</transition>
+	</template>
+	<template>
 		<name x="5" y="5">NodeCheckNomination</name>
 		<parameter>const v_id valueID</parameter>
 		<declaration>/*
@@ -4183,208 +4205,201 @@ void newBCounter() {
     1. if all nodes nominated `valueID` -&gt; goes to `CheckNominationSuccess`
     2. if all nodes somehow nominated `valueID`, but they are not same value -&gt; goes back to StartCheckNomination
 */</declaration>
-		<location id="id147" x="-25" y="-170">
+		<location id="id151" x="-25" y="-170">
 			<name x="-221" y="-178">CheckNominationSuccess</name>
 		</location>
-		<location id="id148" x="-25" y="-25">
+		<location id="id152" x="-25" y="-25">
 			<name x="-212" y="-59">CheckNominationStarted</name>
 		</location>
-		<location id="id149" x="-416" y="-25">
+		<location id="id153" x="-416" y="-25">
 			<name x="-416" y="-59">StartCheckNomination</name>
 		</location>
-		<init ref="id149"/>
-		<transition id="id150">
-			<source ref="id148"/>
-			<target ref="id149"/>
+		<init ref="id153"/>
+		<transition id="id154">
+			<source ref="id152"/>
+			<target ref="id153"/>
 			<label kind="guard" x="-399" y="93">exists (i : n_id) nominatedValues[i][valueID]
 &amp;&amp; !(forall (i : n_id) nominatedValues[i][valueID])</label>
 			<label kind="synchronisation" x="-399" y="76">slotDone?</label>
 			<nail x="-25" y="68"/>
 			<nail x="-416" y="68"/>
 		</transition>
-		<transition id="id151">
-			<source ref="id148"/>
-			<target ref="id147"/>
+		<transition id="id155">
+			<source ref="id152"/>
+			<target ref="id151"/>
 			<label kind="guard" x="-221" y="-127">forall (i : n_id) nominatedValues[i][valueID]</label>
 			<label kind="synchronisation" x="-221" y="-144">slotDone?</label>
 		</transition>
-		<transition id="id152">
-			<source ref="id149"/>
-			<target ref="id148"/>
+		<transition id="id156">
+			<source ref="id153"/>
+			<target ref="id152"/>
 			<label kind="synchronisation" x="-306" y="-17">slotStarted[slotCur]?</label>
 		</transition>
 	</template>
 	<template>
 		<name>TickTestApp</name>
-		<location id="id153" x="-416" y="-8">
+		<location id="id157" x="-416" y="-8">
 			<committed/>
 		</location>
-		<location id="id154" x="-230" y="-8">
+		<location id="id158" x="-230" y="-8">
 		</location>
-		<location id="id155" x="-68" y="-8">
+		<location id="id159" x="-68" y="-8">
 		</location>
-		<location id="id156" x="-68" y="-127">
+		<location id="id160" x="-68" y="-127">
 		</location>
-		<location id="id157" x="-68" y="102">
+		<location id="id161" x="-68" y="102">
 		</location>
-		<location id="id158" x="76" y="-187">
+		<location id="id162" x="76" y="-187">
 		</location>
-		<location id="id159" x="76" y="-93">
+		<location id="id163" x="76" y="-93">
 		</location>
-		<location id="id160" x="76" y="-51">
+		<location id="id164" x="76" y="-51">
 		</location>
-		<location id="id161" x="76" y="42">
+		<location id="id165" x="76" y="42">
 		</location>
-		<location id="id162" x="76" y="85">
+		<location id="id166" x="76" y="85">
 		</location>
-		<location id="id163" x="76" y="178">
+		<location id="id167" x="76" y="178">
 		</location>
-		<location id="id164" x="204" y="-187">
+		<location id="id168" x="204" y="-187">
 			<committed/>
 		</location>
-		<location id="id165" x="204" y="-93">
+		<location id="id169" x="204" y="-93">
 			<committed/>
 		</location>
-		<location id="id166" x="204" y="-51">
+		<location id="id170" x="204" y="-51">
 			<committed/>
 		</location>
-		<location id="id167" x="204" y="42">
+		<location id="id171" x="204" y="42">
 			<committed/>
 		</location>
-		<location id="id168" x="204" y="85">
+		<location id="id172" x="204" y="85">
 			<committed/>
 		</location>
-		<location id="id169" x="204" y="178">
+		<location id="id173" x="204" y="178">
 			<committed/>
 		</location>
-		<init ref="id153"/>
-		<transition id="id170">
-			<source ref="id167"/>
-			<target ref="id154"/>
+		<init ref="id157"/>
+		<transition id="id174">
+			<source ref="id171"/>
+			<target ref="id158"/>
 			<nail x="263" y="42"/>
 			<nail x="263" y="238"/>
 			<nail x="-229" y="238"/>
 		</transition>
-		<transition id="id171">
-			<source ref="id168"/>
-			<target ref="id154"/>
+		<transition id="id175">
+			<source ref="id172"/>
+			<target ref="id158"/>
 			<nail x="263" y="85"/>
 			<nail x="263" y="238"/>
 			<nail x="-229" y="238"/>
 		</transition>
-		<transition id="id172">
-			<source ref="id169"/>
-			<target ref="id154"/>
+		<transition id="id176">
+			<source ref="id173"/>
+			<target ref="id158"/>
 			<nail x="204" y="238"/>
 			<nail x="-229" y="238"/>
 		</transition>
-		<transition id="id173">
-			<source ref="id166"/>
-			<target ref="id154"/>
+		<transition id="id177">
+			<source ref="id170"/>
+			<target ref="id158"/>
 			<nail x="263" y="-51"/>
 			<nail x="263" y="-263"/>
 			<nail x="-229" y="-263"/>
 		</transition>
-		<transition id="id174">
-			<source ref="id165"/>
-			<target ref="id154"/>
+		<transition id="id178">
+			<source ref="id169"/>
+			<target ref="id158"/>
 			<nail x="263" y="-93"/>
 			<nail x="263" y="-263"/>
 			<nail x="-229" y="-263"/>
 		</transition>
-		<transition id="id175">
-			<source ref="id164"/>
-			<target ref="id154"/>
+		<transition id="id179">
+			<source ref="id168"/>
+			<target ref="id158"/>
 			<nail x="204" y="-263"/>
 			<nail x="-229" y="-263"/>
 		</transition>
-		<transition id="id176">
-			<source ref="id163"/>
-			<target ref="id169"/>
+		<transition id="id180">
+			<source ref="id167"/>
+			<target ref="id173"/>
 			<label kind="synchronisation" x="94" y="161">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id177">
-			<source ref="id162"/>
-			<target ref="id168"/>
+		<transition id="id181">
+			<source ref="id166"/>
+			<target ref="id172"/>
 			<label kind="synchronisation" x="94" y="68">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id178">
-			<source ref="id161"/>
-			<target ref="id167"/>
+		<transition id="id182">
+			<source ref="id165"/>
+			<target ref="id171"/>
 			<label kind="synchronisation" x="94" y="25">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id179">
-			<source ref="id160"/>
-			<target ref="id166"/>
+		<transition id="id183">
+			<source ref="id164"/>
+			<target ref="id170"/>
 			<label kind="synchronisation" x="94" y="-68">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id180">
-			<source ref="id159"/>
-			<target ref="id165"/>
+		<transition id="id184">
+			<source ref="id163"/>
+			<target ref="id169"/>
 			<label kind="synchronisation" x="94" y="-110">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id181">
-			<source ref="id158"/>
-			<target ref="id164"/>
+		<transition id="id185">
+			<source ref="id162"/>
+			<target ref="id168"/>
 			<label kind="synchronisation" x="94" y="-204">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id182">
-			<source ref="id157"/>
-			<target ref="id163"/>
+		<transition id="id186">
+			<source ref="id161"/>
+			<target ref="id167"/>
 			<label kind="synchronisation" x="-50" y="123">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id183">
-			<source ref="id157"/>
-			<target ref="id162"/>
+		<transition id="id187">
+			<source ref="id161"/>
+			<target ref="id166"/>
 			<label kind="synchronisation" x="-50" y="76">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id184">
-			<source ref="id155"/>
-			<target ref="id161"/>
+		<transition id="id188">
+			<source ref="id159"/>
+			<target ref="id165"/>
 			<label kind="synchronisation" x="-50" y="0">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id185">
-			<source ref="id155"/>
-			<target ref="id160"/>
+		<transition id="id189">
+			<source ref="id159"/>
+			<target ref="id164"/>
 			<label kind="synchronisation" x="-50" y="-46">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id186">
-			<source ref="id156"/>
-			<target ref="id159"/>
+		<transition id="id190">
+			<source ref="id160"/>
+			<target ref="id163"/>
 			<label kind="synchronisation" x="-50" y="-127">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id187">
-			<source ref="id156"/>
-			<target ref="id158"/>
+		<transition id="id191">
+			<source ref="id160"/>
+			<target ref="id162"/>
 			<label kind="synchronisation" x="-50" y="-174">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id188">
-			<source ref="id154"/>
-			<target ref="id157"/>
+		<transition id="id192">
+			<source ref="id158"/>
+			<target ref="id161"/>
 			<label kind="synchronisation" x="-212" y="30">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id189">
-			<source ref="id154"/>
-			<target ref="id155"/>
+		<transition id="id193">
+			<source ref="id158"/>
+			<target ref="id159"/>
 			<label kind="synchronisation" x="-212" y="-25">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id190">
-			<source ref="id154"/>
-			<target ref="id156"/>
+		<transition id="id194">
+			<source ref="id158"/>
+			<target ref="id160"/>
 			<label kind="synchronisation" x="-212" y="-84">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id191">
-			<source ref="id153"/>
-			<target ref="id154"/>
+		<transition id="id195">
+			<source ref="id157"/>
+			<target ref="id158"/>
 			<label kind="synchronisation" x="-398" y="-25">tickManagerStart!</label>
 		</transition>
-	</template>
-	<template>
-		<name>SilentNode</name>
-		<parameter>const f_id nodeID</parameter>
-		<location id="id192" x="0" y="0">
-		</location>
-		<init ref="id192"/>
 	</template>
 	<system>//system NodeSlot, NodeNomination, NodeBallot, NodeCheckNomination;
 
