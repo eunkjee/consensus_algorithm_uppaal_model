@@ -849,7 +849,7 @@ void newRound(bool hasNominatedValues) {
 		</transition>
 	</template>
 	<template>
-		<name>FaultyNodeNomination</name>
+		<name>NodeFaultyNomination</name>
 		<parameter>const f_id myID</parameter>
 		<declaration>
 
@@ -2703,7 +2703,7 @@ void newBCounter() {
 		</transition>
 	</template>
 	<template>
-		<name>FaultyNodeBallot</name>
+		<name>NodeFaultyBallot</name>
 		<parameter>const f_id myID</parameter>
 		<declaration>
 
@@ -4401,24 +4401,14 @@ void newBCounter() {
 			<label kind="synchronisation" x="-398" y="-25">tickManagerStart!</label>
 		</transition>
 	</template>
-	<system>//system NodeSlot, NodeNomination, NodeBallot, NodeCheckNomination;
-
-//system TickTestApp, TickManager, TickWorker;
-
-//system NodeSlot, NodeNomination, NodeBallot, NodeCheckNomination, TickManager, TickWorker;
-
-//system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
-
-//system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker, NodeFaulty;
-
-// ** Basic simulation
+	<system>// ** Basic simulation
 //system NodeSlot, NodeNomination, NodeBallot, TickManager, TickWorker;
 
 // ** Silent Fault simulation
 system NodeSlot, NodeNomination, NodeBallot, SilentNode, TickManager, TickWorker;
 
 // ** Vote-withholding Fault simulation
-//system NodeSlot, NodeNomination, FaultyNodeNomination, NodeBallot, FaultyNodeBallot, TickManager, TickWorker;</system>
+//system NodeSlot, NodeNomination, NodeFaultyNomination, NodeBallot, NodeFaultyBallot, TickManager, TickWorker;</system>
 	<queries>
 		<option key="--state-representation" value="1"/>
 		<option key="--search-order" value="0"/>

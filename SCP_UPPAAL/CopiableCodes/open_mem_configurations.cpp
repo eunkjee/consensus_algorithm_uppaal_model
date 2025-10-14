@@ -1,5 +1,5 @@
 // ** for 5-node system
-// ** copy and paste the entire code below
+// ** copy and paste the entire code below in (Global) Declarations
 // ------------------------------------------
         
 /// ----- ** GLOBAL CONSTANTS
