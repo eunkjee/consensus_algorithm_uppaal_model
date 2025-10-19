@@ -1,4 +1,4 @@
-// ** for 5-node system
+// ** for (4-5-4) open membership node system
 // ** copy and paste the entire code below in (Global) Declarations
 // ------------------------------------------
         
@@ -7,22 +7,20 @@
     if F != 0, 
     `FaultyNodeNomination`, `FaultyNodeBallot` should be added in System declarations.
 */
-const int THRESHOLD_PERCENT = 67; // Quorum Set Agreement Percentage for Quorum Slice Formation (System-wide)
+const int THRESHOLD_PERCENT = 100; // Quorum Set Agreement Percentage for Quorum Slice Formation (System-wide)
 const int N = 5; // total number of nodes
-const int F = 1; // total number of faulty nodes
-const int V = 2; // maximum number of values in nomination state
+const int F = 0; // total number of faulty nodes
+const int V = 3; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
 const int MAXCNT = 14;  // cur_nRound, cur_b_cnt, SCPBallot.counter
 
 const int SLOTMAX = V-1; // slot max index
 
-
 // ** states for NominationBallot
 const int SCPPrepare = 0;
 const int SCPCommit = 1;
 const int SCPExternalize = 2;
-
 
 /// ------ ** TYPE DEFINITIONS
 
@@ -71,51 +69,57 @@ SCPBallotState ballotStates[N];
 // total participants involved for each value
 // used in Slot management
 
-const int totalParticipants[V] = {N, N-F};
+const int totalParticipants[V] = {4, 5, 4};
 
 const bool NOVALUE[V] = // empty values (no values)
-    {false, false};
+    {false, false, false};
 
 
 bool higherlayerInput[N][V] =
     // 25.07.16
     // Assumes the values are always correct based on the modeling abstaction level.
     // indicates if a node has a value to be written.
-    {{true, true}, 
-     {true, true},
-     {true, true},
-     {true, true},
-     {true, false}};
+    {{true, true, true}, 
+     {true, true, true},
+     {true, true, true},
+     {true, true, true},
+     {true, true, true}};
 
 SCPQuorumSet qs[V][N] =
     // represents an invalid validator as N (e.g., {0, 1, N})
     // {threshold, {validators[N]}}
     {
-      {{0, {0, N, 2, 3, 4}}, // 0
-        {0, {N, 1, 2, 3, 4}}, // 1
-        {0, {N, N, 2, 3, 4}}, // 2
-        {0, {N, N, 2, 3, 4}}, // 3
-        {0, {N, N, 2, 3, 4}}}, // 4
-      {{0, {0, N, 2, 3, N}}, // 0
-        {0, {N, 1, 2, 3, N}}, // 1
-        {0, {N, N, 2, 3, N}}, // 2
-        {0, {N, N, 2, 3, N}}, // 3
-        {0, {N, N, 2, 3, N}}} // 4
+      {{0, {0, 1, 2, 3, N}}, // 0
+        {0, {0, 1, 2, 3, N}}, // 1
+        {0, {0, 1, 2, 3, N}}, // 2
+        {0, {0, 1, 2, 3, N}}, // 3
+        {0, {N, N, N, N, N}}}, // 4 -- 4 not joined
+      {{0, {0, 1, 2, 3, 4}}, // 0
+        {0, {0, 1, 2, 3, 4}}, // 1
+        {0, {0, 1, 2, 3, 4}}, // 2
+        {0, {0, 1, 2, 3, 4}}, // 3
+        {0, {0, 1, 2, 3, 4}}}, // 4 -- 4 joined
+      {{0, {0, 1, 2, 3, N}}, // 0
+        {0, {0, 1, 2, 3, N}}, // 1
+        {0, {0, 1, 2, 3, N}}, // 2
+        {0, {0, 1, 2, 3, N}}, // 3
+        {0, {N, N, N, N, N}}} // 4 -- 4 not joined
     }; 
 
 SCPNominationState nominationStates[N] =
-    {{{false, false}, {false, false}},
-     {{false, false}, {false, false}},
-     {{false, false}, {false, false}},
-     {{false, false}, {false, false}},
-     {{false, false}, {false, false}}};
+    // voted                  accepted
+    {{{false, false, false}, {false, false, false}},
+     {{false, false, false}, {false, false, false}},
+     {{false, false, false}, {false, false, false}},
+     {{false, false, false}, {false, false, false}},
+     {{false, false, false}, {false, false, false}}};
 
 bool nominatedValues[N][V] =
-    {{false, false},
-     {false, false},
-     {false, false},
-     {false, false},
-     {false, false}};
+    {{false, false, false},
+     {false, false, false},
+     {false, false, false},
+     {false, false, false},
+     {false, false, false}};
 
 bool ballotDone[N] =
     {false, false, false, false, false};
