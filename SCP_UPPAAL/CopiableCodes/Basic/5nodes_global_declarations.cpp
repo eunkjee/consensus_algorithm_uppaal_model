@@ -10,11 +10,11 @@
 */
 const int THRESHOLD_PERCENT = 100; // Quorum Set Agreement Percentage for Quorum Slice Formation (System-wide)
 const int N = 5; // total number of nodes
-const int F = 1; // total number of faulty nodes
+const int F = 0; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
 const int INFINITY = 15; // _Boundary_
-const int MAXCNT = 14;  // cur_nRound, cur_b_cnt, SCPBallot.counter
+const int MAXCNT = INFINITY-1;  // cur_nRound, cur_b_cnt, SCPBallot.counter
 
 const int SLOTMAX = V-1; // slot max index
 
