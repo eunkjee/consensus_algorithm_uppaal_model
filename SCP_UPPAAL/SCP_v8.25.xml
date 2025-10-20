@@ -21,7 +21,7 @@ const int SLOTMAX = V-1; // slot max index
 
 // ** states for NominationBallot
 const int SCPPrepare = 0;
-const int SCPCommit = 1;
+const int SCPConfirm = 1;
 const int SCPExternalize = 2;
 
 
@@ -53,7 +53,7 @@ typedef struct {
 typedef struct {
     /* `curState`
         SCPPrepare = 0;
-        SCPCommit = 1;
+        SCPConfirm = 1;
         SCPExternalize = 2;
     */
     int[0,2] curState;
@@ -1296,10 +1296,10 @@ bool checkAcceptedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candida
                     cntQuorumTH++;
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][nodeIndex].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if ( // p
                     ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
@@ -1344,7 +1344,7 @@ bool checkAcceptedPrepare(const SCPBallot &amp;candidate) {
     int[0,N] cntQuorumTH = 0;
 
     if (/// Phase: SCPPrepare
-        ballotStates[myID].curState == SCPCommit
+        ballotStates[myID].curState == SCPConfirm
     ) {
         if (!(ballotStates[myID].p.value == candidate.value
             &amp;&amp; ballotStates[myID].p.counter &lt; candidate.counter)) {
@@ -1390,10 +1390,10 @@ bool checkAcceptedPrepare(const SCPBallot &amp;candidate) {
                     }
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if ( // p
                     ballotStates[qs[slotCur][myID].validators[n]].p.value == candidate.value
@@ -1489,10 +1489,10 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
                     }
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
@@ -1514,7 +1514,7 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
                     }
                 }
             }
-            else { /// Phase: SCPCommit
+            else { /// Phase: SCPConfirm
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
                         if (ballotStates[qs[slotCur][myID].validators[n]].c.value == newMessageBallots[j].value) {
@@ -1575,10 +1575,10 @@ bool checkConfirmedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candid
                     cntQuorumTH++;
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][nodeIndex].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if (ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
                     &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter &gt;= candidate.counter) {
@@ -1666,10 +1666,10 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
                     }
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
@@ -1745,10 +1745,10 @@ bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V
                     cntQuorumTH++;
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][nodeIndex].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == ballotValue
                     &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].c.counter &lt;= counterC
@@ -1800,10 +1800,10 @@ bool checkAcceptedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counter
                 ].curState == SCPPrepare
             ) {
                 // do nothing
-            } else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if (ballotStates[qs[slotCur][myID].validators[n]].b.value == ballotValue
                     &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].c.counter &lt;= counterC
@@ -1855,10 +1855,10 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
                     curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
                 }
 
-            } else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
                 &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].b.value == newMessageBallots[0].value
             ) {
                 curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
@@ -1922,10 +1922,10 @@ bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[
                 ].curState == SCPPrepare
             ) {
                 // do nothing
-            } else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][nodeIndex].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
 
                 if (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == ballotValue
@@ -1986,10 +1986,10 @@ bool attemptConfirmCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &
                 ].curState == SCPPrepare
             ) {
                 // do nothing
-            } else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
                 &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].b.value == newMessageBallots[0].value
             ) {
 
@@ -2134,8 +2134,8 @@ void processMessagePrepare() {
         newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
         newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
 
-    } else if (ballotStates[newMessageNode].curState == SCPCommit) {
-        /// Phase: SCPCommit
+    } else if (ballotStates[newMessageNode].curState == SCPConfirm) {
+        /// Phase: SCPConfirm
         // p.n, b.x
         newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
@@ -2286,7 +2286,7 @@ void processMessagePrepare() {
             ballotStates[myID].c.value = newMessageBallots[0].value;
             ballotStates[myID].h.counter = acceptedCounterH;
             ballotStates[myID].h.value = newMessageBallots[0].value;
-            ballotStates[myID].curState = SCPCommit;
+            ballotStates[myID].curState = SCPConfirm;
             ballotStates[myID].pp.counter = 0;
             ballotStates[myID].pp.value = NOVALUE;
         }
@@ -2340,8 +2340,8 @@ void processMessageCommit() {
         newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
         newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
 
-    } else if ( /// Phase: SCPCommit
-        ballotStates[newMessageNode].curState == SCPCommit
+    } else if ( /// Phase: SCPConfirm
+        ballotStates[newMessageNode].curState == SCPConfirm
     ) {
         // p.n, b.x
         newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
@@ -2453,7 +2453,7 @@ void processMessageCommit() {
             ballotStates[newMessageNode].curState == SCPExternalize
         ) {
             newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
-        } else { /// Phase: SCPCommit
+        } else { /// Phase: SCPConfirm
             newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
         }
 
@@ -2497,8 +2497,8 @@ void newBCounter() {
 
             updateBValue();
             
-        } else if ( /// Phase: SCPCommit
-            ballotStates[myID].curState == SCPCommit
+        } else if ( /// Phase: SCPConfirm
+            ballotStates[myID].curState == SCPConfirm
         ) {
             processMessageCommit();
 
@@ -2526,7 +2526,7 @@ void newBCounter() {
 			<name x="170" y="-17">Externalize</name>
 		</location>
 		<location id="id82" x="-102" y="-17">
-			<name x="-178" y="-17">Commit</name>
+			<name x="-178" y="-17">Confirm</name>
 		</location>
 		<location id="id83" x="-484" y="-17">
 			<name x="-561" y="-8">Prepare</name>
@@ -2580,7 +2580,7 @@ void newBCounter() {
 		<transition id="id96">
 			<source ref="id83"/>
 			<target ref="id91"/>
-			<label kind="guard" x="-476" y="-85">ballotStates[myID].curState == SCPCommit</label>
+			<label kind="guard" x="-476" y="-85">ballotStates[myID].curState == SCPConfirm</label>
 			<label kind="synchronisation" x="-476" y="-68">tickAdvanceBallot[myID]?</label>
 		</transition>
 		<transition id="id97">
@@ -2592,7 +2592,7 @@ void newBCounter() {
 		<transition id="id98">
 			<source ref="id82"/>
 			<target ref="id90"/>
-			<label kind="guard" x="-365" y="34">ballotStates[myID].curState == SCPCommit</label>
+			<label kind="guard" x="-365" y="34">ballotStates[myID].curState == SCPConfirm</label>
 			<label kind="synchronisation" x="-365" y="51">tickAdvance[myID]?</label>
 			<label kind="assignment" x="-365" y="68">newBCounter()</label>
 			<nail x="-178" y="59"/>
@@ -2767,10 +2767,10 @@ bool checkAcceptedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candida
                     cntQuorumTH++;
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][nodeIndex].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if ( // p
                     ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
@@ -2815,7 +2815,7 @@ bool checkAcceptedPrepare(const SCPBallot &amp;candidate) {
     int[0,N] cntQuorumTH = 0;
 
     if (/// Phase: SCPPrepare
-        ballotStates[myID].curState == SCPCommit
+        ballotStates[myID].curState == SCPConfirm
     ) {
         if (!(ballotStates[myID].p.value == candidate.value
             &amp;&amp; ballotStates[myID].p.counter &lt; candidate.counter)) {
@@ -2861,10 +2861,10 @@ bool checkAcceptedPrepare(const SCPBallot &amp;candidate) {
                     }
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if ( // p
                     ballotStates[qs[slotCur][myID].validators[n]].p.value == candidate.value
@@ -2960,10 +2960,10 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
                     }
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
@@ -2985,7 +2985,7 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
                     }
                 }
             }
-            else { /// Phase: SCPCommit
+            else { /// Phase: SCPConfirm
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
                         if (ballotStates[qs[slotCur][myID].validators[n]].c.value == newMessageBallots[j].value) {
@@ -3046,10 +3046,10 @@ bool checkConfirmedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candid
                     cntQuorumTH++;
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][nodeIndex].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if (ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
                     &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter &gt;= candidate.counter) {
@@ -3137,10 +3137,10 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
                     }
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
@@ -3216,10 +3216,10 @@ bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V
                     cntQuorumTH++;
                 }
             }
-            else if ( /// Phase: SCPCommit
+            else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][nodeIndex].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == ballotValue
                     &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].c.counter &lt;= counterC
@@ -3271,10 +3271,10 @@ bool checkAcceptedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counter
                 ].curState == SCPPrepare
             ) {
                 // do nothing
-            } else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
                 if (ballotStates[qs[slotCur][myID].validators[n]].b.value == ballotValue
                     &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].c.counter &lt;= counterC
@@ -3326,10 +3326,10 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
                     curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
                 }
 
-            } else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
                 &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].b.value == newMessageBallots[0].value
             ) {
                 curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
@@ -3393,10 +3393,10 @@ bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[
                 ].curState == SCPPrepare
             ) {
                 // do nothing
-            } else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][nodeIndex].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
             ) {
 
                 if (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == ballotValue
@@ -3457,10 +3457,10 @@ bool attemptConfirmCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &
                 ].curState == SCPPrepare
             ) {
                 // do nothing
-            } else if ( /// Phase: SCPCommit
+            } else if ( /// Phase: SCPConfirm
                 ballotStates[
                     qs[slotCur][myID].validators[n]
-                ].curState == SCPCommit
+                ].curState == SCPConfirm
                 &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].b.value == newMessageBallots[0].value
             ) {
 
@@ -3605,8 +3605,8 @@ void processMessagePrepare() {
         newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
         newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
 
-    } else if (ballotStates[newMessageNode].curState == SCPCommit) {
-        /// Phase: SCPCommit
+    } else if (ballotStates[newMessageNode].curState == SCPConfirm) {
+        /// Phase: SCPConfirm
         // p.n, b.x
         newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
         newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
@@ -3757,7 +3757,7 @@ void processMessagePrepare() {
             ballotStates[myID].c.value = newMessageBallots[0].value;
             ballotStates[myID].h.counter = acceptedCounterH;
             ballotStates[myID].h.value = newMessageBallots[0].value;
-            ballotStates[myID].curState = SCPCommit;
+            ballotStates[myID].curState = SCPConfirm;
             ballotStates[myID].pp.counter = 0;
             ballotStates[myID].pp.value = NOVALUE;
         }
@@ -3811,8 +3811,8 @@ void processMessageCommit() {
         newMessageBallots[2].counter = ballotStates[newMessageNode].pp.counter;
         newMessageBallots[2].value = ballotStates[newMessageNode].pp.value;
 
-    } else if ( /// Phase: SCPCommit
-        ballotStates[newMessageNode].curState == SCPCommit
+    } else if ( /// Phase: SCPConfirm
+        ballotStates[newMessageNode].curState == SCPConfirm
     ) {
         // p.n, b.x
         newMessageBallots[0].counter = ballotStates[newMessageNode].p.counter;
@@ -3924,7 +3924,7 @@ void processMessageCommit() {
             ballotStates[newMessageNode].curState == SCPExternalize
         ) {
             newMessageBallots[0].value = ballotStates[newMessageNode].c.value;
-        } else { /// Phase: SCPCommit
+        } else { /// Phase: SCPConfirm
             newMessageBallots[0].value = ballotStates[newMessageNode].b.value;
         }
 
@@ -3968,8 +3968,8 @@ void newBCounter() {
 
             updateBValue();
             
-        } else if ( /// Phase: SCPCommit
-            ballotStates[myID].curState == SCPCommit
+        } else if ( /// Phase: SCPConfirm
+            ballotStates[myID].curState == SCPConfirm
         ) {
             processMessageCommit();
 
@@ -3997,7 +3997,7 @@ void newBCounter() {
 			<name x="170" y="-17">Externalize</name>
 		</location>
 		<location id="id115" x="-102" y="-17">
-			<name x="-178" y="-17">Commit</name>
+			<name x="-178" y="-17">Confirm</name>
 		</location>
 		<location id="id116" x="-484" y="-17">
 			<name x="-561" y="-8">Prepare</name>
@@ -4051,7 +4051,7 @@ void newBCounter() {
 		<transition id="id129">
 			<source ref="id116"/>
 			<target ref="id124"/>
-			<label kind="guard" x="-476" y="-85">ballotStates[myID].curState == SCPCommit</label>
+			<label kind="guard" x="-476" y="-85">ballotStates[myID].curState == SCPConfirm</label>
 			<label kind="synchronisation" x="-476" y="-68">tickAdvanceBallot[myID]?</label>
 		</transition>
 		<transition id="id130">
@@ -4063,7 +4063,7 @@ void newBCounter() {
 		<transition id="id131">
 			<source ref="id115"/>
 			<target ref="id123"/>
-			<label kind="guard" x="-365" y="34">ballotStates[myID].curState == SCPCommit</label>
+			<label kind="guard" x="-365" y="34">ballotStates[myID].curState == SCPConfirm</label>
 			<label kind="synchronisation" x="-365" y="51">tickAdvance[myID]?</label>
 			<label kind="assignment" x="-365" y="68">newBCounter()</label>
 			<nail x="-178" y="59"/>
