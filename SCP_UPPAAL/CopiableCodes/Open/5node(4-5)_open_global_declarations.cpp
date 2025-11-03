@@ -12,7 +12,7 @@ const int N = 5; // total number of nodes
 const int F = 0; // total number of faulty nodes
 const int V = 2; // maximum number of values in nomination state
 
-const int INFINITY = 15;
+const int INFINITY = BOUNDARY+1;
 const int BOUNDARY = 14;
 
 const int SLOTMAX = V-1; // slot max index
