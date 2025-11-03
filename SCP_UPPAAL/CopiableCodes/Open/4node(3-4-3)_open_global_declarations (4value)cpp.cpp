@@ -12,14 +12,14 @@ const int N = 4; // total number of nodes
 const int F = 0; // total number of faulty nodes
 const int V = 4; // maximum number of values in nomination state
 
-const int INFINITY = 15; // _Boundary_
-const int MAXCNT = 14;  // cur_nRound, cur_b_cnt, SCPBallot.counter
+const int INFINITY = 15;
+const int BOUNDARY = 14;
 
 const int SLOTMAX = V-1; // slot max index
 
 // ** states for NominationBallot
 const int SCPPrepare = 0;
-const int SCPCommit = 1;
+const int SCPConfirm = 1;
 const int SCPExternalize = 2;
 
 /// ------ ** TYPE DEFINITIONS
@@ -50,7 +50,7 @@ typedef struct {
 typedef struct {
     /* `curState`
         SCPPrepare = 0;
-        SCPCommit = 1;
+        SCPConfirm = 1;
         SCPExternalize = 2;
     */
     int[0,2] curState;

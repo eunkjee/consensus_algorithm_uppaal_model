@@ -144,7 +144,7 @@ void processMessageNomination(bool hasNominatedValues) {
     }
 }
 
-int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
+int getHighestPriorityNode(int[0,BOUNDARY] cur_round_in) {
     int[0,N] highest = cur_round_in % getTotalValidators(myID);
     int[0,N] current = 0;
 
@@ -206,7 +206,7 @@ void newRound(bool hasNominatedValues) {
             processMessageNomination(hasNominatedValues);
 
             // mark as proceeding next round
-            if (cur_nRound[myID]<MAXCNT) {
+            if (cur_nRound[myID]<BOUNDARY) {
                 cur_nRound[myID]++;
             }
 

@@ -13,8 +13,8 @@ const int N = 5; // total number of nodes
 const int F = 1; // total number of faulty nodes
 const int V = 1; // maximum number of values in nomination state
 
-const int INFINITY = 15; // _Boundary_
-const int MAXCNT = 14;  // cur_nRound, cur_b_cnt, SCPBallot.counter
+const int INFINITY = 15;
+const int BOUNDARY = INFINITY-1;
 
 const int SLOTMAX = V-1; // slot max index
 
@@ -434,7 +434,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id31">
 			<source ref="id23"/>
 			<target ref="id19"/>
-			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_nRound[i] == MAXCNT
+			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_nRound[i] == BOUNDARY
 &amp;&amp; forall (i : n_id) nominationStates[i].accepted == NOVALUE</label>
 			<label kind="synchronisation" x="-425" y="212">slotFail!</label>
 			<label kind="assignment" x="-425" y="229">doFail()</label>
@@ -443,8 +443,8 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id32">
 			<source ref="id23"/>
 			<target ref="id20"/>
-			<label kind="guard" x="-425" y="-365">(exists (i : n_id) cur_nRound[i] == MAXCNT
-|| exists (i : n_id) cur_b_cnt[i] == MAXCNT)
+			<label kind="guard" x="-425" y="-365">(exists (i : n_id) cur_nRound[i] == BOUNDARY
+|| exists (i : n_id) cur_b_cnt[i] == BOUNDARY)
 &amp;&amp; exists (i : n_id) nominationStates[i].accepted != NOVALUE</label>
 			<label kind="synchronisation" x="-425" y="-306">slotTimeout!</label>
 			<label kind="assignment" x="-425" y="-289">doFail()</label>
@@ -621,7 +621,7 @@ void processMessageNomination(bool hasNominatedValues) {
     }
 }
 
-int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
+int getHighestPriorityNode(int[0,BOUNDARY] cur_round_in) {
     int[0,N] highest = cur_round_in % getTotalValidators(myID);
     int[0,N] current = 0;
 
@@ -683,7 +683,7 @@ void newRound(bool hasNominatedValues) {
             processMessageNomination(hasNominatedValues);
 
             // mark as proceeding next round
-            if (cur_nRound[myID]&lt;MAXCNT) {
+            if (cur_nRound[myID]&lt;BOUNDARY) {
                 cur_nRound[myID]++;
             }
 
@@ -1003,7 +1003,7 @@ void processMessageNomination(bool hasNominatedValues) {
     }
 }
 
-int getHighestPriorityNode(int[0,MAXCNT] cur_round_in) {
+int getHighestPriorityNode(int[0,BOUNDARY] cur_round_in) {
     int[0,N] highest = cur_round_in % getTotalValidators(myID);
     int[0,N] current = 0;
 
@@ -1065,7 +1065,7 @@ void newRound(bool hasNominatedValues) {
             processMessageNomination(hasNominatedValues);
 
             // mark as proceeding next round
-            if (cur_nRound[myID]&lt;MAXCNT) {
+            if (cur_nRound[myID]&lt;BOUNDARY) {
                 cur_nRound[myID]++;
             }
 
@@ -2487,11 +2487,11 @@ void newBCounter() {
         ) {
             processMessagePrepare();
 
-            if (ballotStates[myID].b.counter &lt; MAXCNT) {
+            if (ballotStates[myID].b.counter &lt; BOUNDARY) {
                 ballotStates[myID].b.counter++;
             }
             
-            if (cur_b_cnt[myID] &lt; MAXCNT) {
+            if (cur_b_cnt[myID] &lt; BOUNDARY) {
                 cur_b_cnt[myID]++;
             }
 
@@ -2502,11 +2502,11 @@ void newBCounter() {
         ) {
             processMessageCommit();
 
-            if (ballotStates[myID].b.counter &lt; MAXCNT) {
+            if (ballotStates[myID].b.counter &lt; BOUNDARY) {
                 ballotStates[myID].b.counter++;
             }
             
-            if (cur_b_cnt[myID] &lt; MAXCNT) {
+            if (cur_b_cnt[myID] &lt; BOUNDARY) {
                 cur_b_cnt[myID]++;
             }
             updateBValue();
@@ -3958,11 +3958,11 @@ void newBCounter() {
         ) {
             processMessagePrepare();
 
-            if (ballotStates[myID].b.counter &lt; MAXCNT) {
+            if (ballotStates[myID].b.counter &lt; BOUNDARY) {
                 ballotStates[myID].b.counter++;
             }
             
-            if (cur_b_cnt[myID] &lt; MAXCNT) {
+            if (cur_b_cnt[myID] &lt; BOUNDARY) {
                 cur_b_cnt[myID]++;
             }
 
@@ -3973,11 +3973,11 @@ void newBCounter() {
         ) {
             processMessageCommit();
 
-            if (ballotStates[myID].b.counter &lt; MAXCNT) {
+            if (ballotStates[myID].b.counter &lt; BOUNDARY) {
                 ballotStates[myID].b.counter++;
             }
             
-            if (cur_b_cnt[myID] &lt; MAXCNT) {
+            if (cur_b_cnt[myID] &lt; BOUNDARY) {
                 cur_b_cnt[myID]++;
             }
             updateBValue();
