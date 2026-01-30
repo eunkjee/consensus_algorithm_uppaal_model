@@ -18,6 +18,10 @@ const int INFINITY = BOUNDARY+1;
 
 const int SLOTMAX = V-1; // slot max index
 
+// Constants for V_TYPE
+const int EMPTY = 0;
+const int INTENDED_VALUE = 1;
+const int DEVIATED_VALUE = 2;
 
 // ** states for NominationBallot
 const int SCPPrepare = 0;
@@ -30,6 +34,7 @@ const int SCPExternalize = 2;
 typedef int[0,N-F-1] n_id;     // node id (0 to n-f-1)
 typedef int[N-F,N-1] f_id;     // fault node id (n-f to n-1)
 typedef int[0,V-1] v_id;       // value id (0 to v-1)
+typedef int[0,2] V_TYPE;       // types of value (0: Empty, 1: INTENDED_VALUE, 2: DEVIATED_VALUE)
 typedef int[0,SLOTMAX] s_id;   // slot id
 typedef int[0,N-1] t_id;       // tick id
 
@@ -47,7 +52,7 @@ typedef struct {
 // ballot
 typedef struct {
     int[0,INFINITY] counter;
-    bool value[V];
+    V_TYPE value[V];
 } SCPBallot;
 
 typedef struct {
@@ -74,28 +79,29 @@ SCPBallotState ballotStates[N];
 
 const int totalParticipants[V] = {N};
 
-const bool NOVALUE[V] = // empty values (no values)
+const V_TYPE NOVALUE[V] = // empty values (no values)
+    {EMPTY};
+const bool ISALLFALSE[V] = // TODO: need to be reviewed for the name
     {false};
 
-
-bool higherlayerInput[N][V] =
+V_TYPE higherlayerInput[N][V] =
     // 25.07.16
     // Assumes the values are always correct based on the modeling abstaction level.
     // indicates if a node has a value to be written.
-   {{true},
-    {true},
-    {true},
-    {true},
-    {true}};
+   {{INTENDED_VALUE},
+    {EMPTY},
+    {EMPTY},
+    {EMPTY},
+    {EMPTY}};
 
 SCPQuorumSet qs[V][N] =
     // represents an invalid validator as N (e.g., {0, 1, N})
     // {threshold, {validators[N]}}
-    {{{0, {0, 1, 2, 3, 4}},
-      {0, {0, 1, 2, 3, 4}},
-      {0, {0, 1, 2, 3, 4}},
-      {0, {0, 1, 2, 3, 4}},
-      {0, {0, 1, 2, 3, 4}}}}; // the entire of nodes are in one quorum
+    {{{0, {0, 1, 2, N, N}}, // 0
+      {0, {0, 1, 2, N, N}}, // 1
+      {0, {0, 1, 2, N, N}}, // 2
+      {0, {0, 1, 2, 3, N}}, // 3
+      {0, {0, 1, 2, N, 4}}}}; // 4
 
 SCPNominationState nominationStates[N] =
    {{{false}, {false}},
@@ -104,12 +110,12 @@ SCPNominationState nominationStates[N] =
     {{false}, {false}},
     {{false}, {false}}};
 
-bool nominatedValues[N][V] =
-   {{false},
-    {false},
-    {false},
-    {false},
-    {false}};
+V_TYPE nominatedValues[N][V] =
+   {{EMPTY},
+    {EMPTY},
+    {EMPTY},
+    {EMPTY},
+    {EMPTY}};
 
 bool ballotDone[N] =
     {false, false, false, false, false};
@@ -158,8 +164,10 @@ int[0,SLOTMAX] slotCur = 0; // current slot pointer
 
 
 /// ------ ** METHODS
-bool isLessValue(const bool &amp;valueL[V], const bool &amp;valueR[V]) {
+bool isLessValue(const V_TYPE &amp;valueL[V], const V_TYPE &amp;valueR[V]) {
     // check if valueL &lt; valueR
+    
+    // TODO: THE COMPARISON NEEDS TO BE CHECKED. valueL and valueR arrays are no longer booleans.
 
     int[-1, V-1] i;
 
@@ -330,11 +338,11 @@ bool hasHigherlayerInput() {
     return false;
 }
 
-void clearInputs(const bool &amp;value[V]) {
+void clearInputs(const V_TYPE &amp;value[V]) {
     for (v : v_id) {
         if (value[v]) {
             for (id : int[0,N-1]) {
-                higherlayerInput[id][v] = false;
+                higherlayerInput[id][v] = 0;
             }
         }
     }
@@ -354,7 +362,7 @@ void doFail() {
 }
 
 bool isAllAgreedLocal(int[0,N-1] nID) {
-    bool value[V] = NOVALUE;
+    V_TYPE value[V] = NOVALUE;
 
     for (n : n_id) {
         if (qs[slotCur][nID].validators[n] != N) {
@@ -435,7 +443,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id23"/>
 			<target ref="id19"/>
 			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_nRound[i] == BOUNDARY
-&amp;&amp; forall (i : n_id) nominationStates[i].accepted == NOVALUE</label>
+&amp;&amp; forall (i : n_id) nominationStates[i].accepted == ISALLFALSE</label>
 			<label kind="synchronisation" x="-425" y="212">slotFail!</label>
 			<label kind="assignment" x="-425" y="229">doFail()</label>
 			<nail x="-442" y="170"/>
@@ -445,7 +453,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<target ref="id20"/>
 			<label kind="guard" x="-425" y="-365">(exists (i : n_id) cur_nRound[i] == BOUNDARY
 || exists (i : n_id) cur_b_cnt[i] == BOUNDARY)
-&amp;&amp; exists (i : n_id) nominationStates[i].accepted != NOVALUE</label>
+&amp;&amp; exists (i : n_id) nominationStates[i].accepted != ISALLFALSE</label>
 			<label kind="synchronisation" x="-425" y="-306">slotTimeout!</label>
 			<label kind="assignment" x="-425" y="-289">doFail()</label>
 			<nail x="-442" y="-272"/>
@@ -1724,7 +1732,7 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
     return hasNewConfirmedPrepare;
 }
 
-bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const V_TYPE &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntQuorumTH = 0;
     bool isVBlocked = false;
 
@@ -1788,7 +1796,7 @@ bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V
     return false;
 }
 
-bool checkAcceptedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkAcceptedCommit(const V_TYPE &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntVBlockTH = 0;
     int[0,N] cntQuorumTH = 0;
 
@@ -1907,7 +1915,7 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
     return isAgreed;
 }
 
-bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const V_TYPE &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
@@ -1950,7 +1958,7 @@ bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[
     return false;
 }
 
-bool checkConfirmedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkConfirmedCommit(const V_TYPE &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
@@ -3195,7 +3203,7 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
     return hasNewConfirmedPrepare;
 }
 
-bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const V_TYPE &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntQuorumTH = 0;
     bool isVBlocked = false;
 
@@ -3259,7 +3267,7 @@ bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V
     return false;
 }
 
-bool checkAcceptedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkAcceptedCommit(const V_TYPE &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntVBlockTH = 0;
     int[0,N] cntQuorumTH = 0;
 
@@ -3378,7 +3386,7 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
     return isAgreed;
 }
 
-bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const V_TYPE &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
@@ -3421,7 +3429,7 @@ bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[
     return false;
 }
 
-bool checkConfirmedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkConfirmedCommit(const V_TYPE &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
@@ -4450,12 +4458,6 @@ Purpose: Do timeout-induced slot failures not occur?</comment>
 			<comment>Not considering faulty nodes
 Integrated Failure Prevention (Combined Safety)
 Purpose: Are all forms of slot failures prevented?</comment>
-			<result outcome="success" type="quality" timestamp="2025-06-23 17:05:04 +0900">
-				<option key="--state-representation" value="1"/>
-				<option key="--search-order" value="0"/>
-				<option key="--statespace-consumption" value="2"/>
-				<option key="--diagnostic" value="0"/>
-			</result>
 		</query>
 		<query>
 			<formula>A[] forall (i : s_id) (NodeSlot(i).SlotSuccess imply forall (j : v_id) not NodeCheckNomination(j).StartCheckNomination)
