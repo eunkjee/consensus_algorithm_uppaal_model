@@ -20,8 +20,8 @@ const int SLOTMAX = V-1; // slot max index
 
 // Constants for V_TYPE
 const int EMPTY = 0;
-const int INTENDED_VALUE = 1;
-const int DEVIATED_VALUE = 2;
+const int VALUE_1 = 1;
+const int VALUE_2 = 2;
 
 // ** states for NominationBallot
 const int SCPPrepare = 0;
@@ -34,7 +34,7 @@ const int SCPExternalize = 2;
 typedef int[0,N-F-1] n_id;     // node id (0 to n-f-1)
 typedef int[N-F,N-1] f_id;     // fault node id (n-f to n-1)
 typedef int[0,V-1] v_id;       // value id (0 to v-1)
-typedef int[0,2] V_TYPE;       // types of value (0: Empty, 1: INTENDED_VALUE, 2: DEVIATED_VALUE)
+typedef int[0,2] V_TYPE;       // types of value (0: Empty, 1: VALUE_1, 2: VALUE_2)
 typedef int[0,SLOTMAX] s_id;   // slot id
 typedef int[0,N-1] t_id;       // tick id
 
@@ -88,8 +88,8 @@ V_TYPE higherlayerInput[N][V] =
     // 25.07.16
     // Assumes the values are always correct based on the modeling abstaction level.
     // indicates if a node has a value to be written.
-   {{INTENDED_VALUE},
-    {EMPTY},
+   {{VALUE_1},
+    {VALUE_2},
     {EMPTY},
     {EMPTY},
     {EMPTY}};
