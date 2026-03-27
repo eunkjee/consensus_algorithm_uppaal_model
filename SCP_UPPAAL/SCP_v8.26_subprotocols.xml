@@ -379,13 +379,13 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
     return true;
 }</declaration>
 		<location id="id19" x="93" y="170">
-			<name x="83" y="136">SlotFail</name>
+			<name x="83" y="136">LiveButUnsafe</name>
 		</location>
 		<location id="id20" x="93" y="-272">
-			<name x="83" y="-306">SlotOutofBound</name>
+			<name x="83" y="-306">LostLiveness</name>
 		</location>
 		<location id="id21" x="93" y="-8">
-			<name x="85" y="-42">SlotSuccess</name>
+			<name x="85" y="-42">LiveAndSafe</name>
 		</location>
 		<location id="id22" x="-161" y="-8">
 			<name x="-171" y="-42">SlotDone</name>
@@ -407,7 +407,6 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<label kind="guard" x="-289" y="-161">forall (i : n_id) nominatedValues[i] != NOVALUE
 &amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE
 &amp;&amp; cntSlotDone == totalParticipants[slotID]-F</label>
-			<label kind="comments" x="-289" y="-187">If nomination and ballot processes of intact nodes are done without faulty nodes</label>
 			<nail x="-297" y="-93"/>
 			<nail x="-161" y="-93"/>
 		</transition>
@@ -415,7 +414,6 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id25"/>
 			<target ref="id22"/>
 			<label kind="guard" x="-280" y="-59">cntSlotDone == totalParticipants[slotID]</label>
-			<label kind="comments" x="-280" y="-85">If all nodes have done their slot processes including faulty nodes</label>
 		</transition>
 		<transition id="id28">
 			<source ref="id25"/>
@@ -464,7 +462,6 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<label kind="guard" x="-85" y="0">forall (i : n_id) isAllAgreedLocal(i)</label>
 			<label kind="synchronisation" x="-85" y="17">slotSuccess!</label>
 			<label kind="assignment" x="-85" y="34">doSuccess()</label>
-			<label kind="comments" x="-85" y="59">When all intact nodes externalize the same value</label>
 		</transition>
 		<transition id="id34">
 			<source ref="id24"/>
@@ -913,13 +910,13 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
     return true;
 }</declaration>
 		<location id="id58" x="93" y="170">
-			<name x="83" y="136">SlotFail</name>
+			<name x="85" y="136">LiveButUnsafe</name>
 		</location>
 		<location id="id59" x="93" y="-272">
-			<name x="83" y="-306">SlotOutofBound</name>
+			<name x="83" y="-306">LostLiveness</name>
 		</location>
 		<location id="id60" x="93" y="-8">
-			<name x="85" y="-42">SlotSuccess</name>
+			<name x="85" y="-42">LiveAndSafe</name>
 		</location>
 		<location id="id61" x="-161" y="-8">
 			<name x="-171" y="-42">SlotDone</name>
@@ -941,7 +938,6 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<label kind="guard" x="-289" y="-161">forall (i : n_id) nominatedValues[i] != NOVALUE
 &amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE
 &amp;&amp; cntSlotDone == totalParticipants[slotID]-F</label>
-			<label kind="comments" x="-289" y="-187">If nomination and ballot processes of intact nodes are done without faulty nodes</label>
 			<nail x="-297" y="-93"/>
 			<nail x="-161" y="-93"/>
 		</transition>
@@ -949,7 +945,6 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id64"/>
 			<target ref="id61"/>
 			<label kind="guard" x="-280" y="-59">cntSlotDone == totalParticipants[slotID]</label>
-			<label kind="comments" x="-280" y="-85">If all nodes have done their slot processes including faulty nodes</label>
 		</transition>
 		<transition id="id67">
 			<source ref="id64"/>
@@ -998,7 +993,6 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<label kind="guard" x="-85" y="0">forall (i : n_id) isAllAgreedLocal(i)</label>
 			<label kind="synchronisation" x="-85" y="17">slotSuccess!</label>
 			<label kind="assignment" x="-85" y="34">doSuccess()</label>
-			<label kind="comments" x="-85" y="59">When all intact nodes externalize the same value</label>
 		</transition>
 		<transition id="id73">
 			<source ref="id63"/>
