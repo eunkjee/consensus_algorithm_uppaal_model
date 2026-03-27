@@ -62,15 +62,13 @@ typedef struct {
     SCPBallot h;
     SCPBallot c;
 } SCPBallotState;
-SCPBallotState ballotStates[N];
 
 
 /// ------ ** Node configurations
 /// ------- - modify here after change N, F values
 
-// total participants involved for each value
-// used in Slot management
-
+// `totalParticipants` incidates # of nodes involved in a decision process.
+// Every value is required for a decision process.
 const int totalParticipants[V] = {N};
 
 const bool NOVALUE[V] = // empty values (no values)
@@ -78,8 +76,21 @@ const bool NOVALUE[V] = // empty values (no values)
 const bool ISALLFALSE[V] = // TODO: need to be reviewed for the name
     {false};
 
+SCPQuorumSet qs[V][N] =
+    // represents an invalid validator as N (e.g., {0, 1, N})
+    // {threshold, {validators[N]}}
+    {{
+        {0, {0, 1, 2, N, N}}, // 0
+        {0, {0, 1, 2, N, N}}, // 1
+        {0, {0, 1, 2, N, N}}, // 2
+        {0, {0, 1, 2, 3, N}}, // 3
+        {0, {0, 1, 2, N, 4}}  // 4
+    }};
+
+// * -- Nomination protocol data
+SCPNominationState nominationStates[N];
+
 bool higherlayerInput[N][V] =
-    // 25.07.16
     // Assumes the values are always correct based on the modeling abstaction level.
     // indicates if a node has a value to be written.
    {{true},
@@ -87,29 +98,16 @@ bool higherlayerInput[N][V] =
     {false},
     {false},
     {false}};
-
-SCPQuorumSet qs[V][N] =
-    // represents an invalid validator as N (e.g., {0, 1, N})
-    // {threshold, {validators[N]}}
-    {{{0, {0, 1, 2, N, N}}, // 0
-      {0, {0, 1, 2, N, N}}, // 1
-      {0, {0, 1, 2, N, N}}, // 2
-      {0, {0, 1, 2, 3, N}}, // 3
-      {0, {0, 1, 2, N, 4}}}}; // 4
-
-SCPNominationState nominationStates[N] =
-   {{{false}, {false}},
-    {{false}, {false}},
-    {{false}, {false}},
-    {{false}, {false}},
-    {{false}, {false}}};
-
+    
 bool nominatedValues[N][V] =
    {{false},
     {false},
     {false},
     {false},
     {false}};
+
+// *-- Ballot protocol data
+SCPBallotState ballotStates[N];
 
 bool ballotDone[N] =
     {false, false, false, false, false};
@@ -126,7 +124,7 @@ int[0,INFINITY] tickBallot[N] =
 int[0,INFINITY] cur_nRound[N] = // current running nomination round states of each node
     {0, 0, 0, 0, 0};
 
-int[0,INFINITY] cur_b_cnt[N] =
+int[0,INFINITY] cur_b_cnt[N] =  // global reference value for the current running b.n
     {0, 0, 0, 0, 0};
     
 
