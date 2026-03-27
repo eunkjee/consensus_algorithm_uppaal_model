@@ -16,8 +16,6 @@ const int V = 1; // maximum number of values in nomination state
 const int BOUNDARY = 14;
 const int INFINITY = BOUNDARY+1;
 
-const int SLOTMAX = V-1; // slot max index
-
 // ** states for NominationBallot
 const int SCPPrepare = 0;
 const int SCPConfirm = 1;
@@ -29,7 +27,6 @@ const int SCPExternalize = 2;
 typedef int[0,N-F-1] n_id;     // node id (0 to n-f-1)
 typedef int[N-F,N-1] f_id;     // fault node id (n-f to n-1)
 typedef int[0,V-1] v_id;       // value id (0 to v-1)
-typedef int[0,SLOTMAX] s_id;   // slot id
 typedef int[0,N-1] t_id;       // tick id
 
 typedef struct {
@@ -69,23 +66,23 @@ typedef struct {
 
 // `totalParticipants` incidates # of nodes involved in a decision process.
 // Every value is required for a decision process.
-const int totalParticipants[V] = {N};
+const int totalParticipants = N;
 
 const bool NOVALUE[V] = // empty values (no values)
     {false};
 const bool ISALLFALSE[V] = // TODO: need to be reviewed for the name
     {false};
 
-SCPQuorumSet qs[V][N] =
+SCPQuorumSet qs[N] =
     // represents an invalid validator as N (e.g., {0, 1, N})
     // {threshold, {validators[N]}}
-    {{
+    {
         {0, {0, 1, 2, N, N}}, // 0
         {0, {0, 1, 2, N, N}}, // 1
         {0, {0, 1, 2, N, N}}, // 2
         {0, {0, 1, 2, 3, N}}, // 3
         {0, {0, 1, 2, N, 4}}  // 4
-    }};
+    };
 
 // * -- Nomination protocol data
 SCPNominationState nominationStates[N];
@@ -133,17 +130,17 @@ int[0,INFINITY] cur_b_cnt[N] =  // global reference value for the current runnin
 chan sthNominated[N];
 chan nominationDone[N];
 
-chan slotDone;
+chan decisionDone;
 
 chan tickAdvanceBallot[N];
 chan tickAdvance[N];
 chan tickAdvanceDone[N];
 
 /// broadcast channels
-broadcast chan slotSuccess;
-broadcast chan slotFail;
-broadcast chan slotTimeout;
-broadcast chan slotStarted[SLOTMAX+1];
+broadcast chan consensusSuccess;
+broadcast chan consensusFail;
+broadcast chan consensusTimeout;
+broadcast chan decisionStarted;
 
 broadcast chan tickStart;
 broadcast chan tickStop;
@@ -152,7 +149,7 @@ broadcast chan tickManagerStart; // for TickTestApp
 
 
 /// ----- ** VARIABLES
-int[0,SLOTMAX] slotCur = 0; // current slot pointer
+//int[0,V-1] slotCur = 0; // current slot pointer
 
 
 /// ------ ** METHODS
@@ -183,7 +180,7 @@ int getTotalValidators(const int[0,N] curNodeID) {
     int[0,N] totalValidators = 0;
 
     for (i : int[0,N-1]) {
-        if (qs[slotCur][curNodeID].validators[i] != N) {
+        if (qs[curNodeID].validators[i] != N) {
             totalValidators++;
         }
     }
@@ -223,14 +220,14 @@ void resetTick() {
 		<transition id="id4">
 			<source ref="id2"/>
 			<target ref="id3"/>
-			<label kind="synchronisation" x="-127" y="-280">slotTimeout?</label>
+			<label kind="synchronisation" x="-127" y="-280">consensusTimeout?</label>
 			<nail x="85" y="-289"/>
 			<nail x="-144" y="-289"/>
 		</transition>
 		<transition id="id5">
 			<source ref="id2"/>
 			<target ref="id3"/>
-			<label kind="synchronisation" x="-127" y="-212">slotFail?</label>
+			<label kind="synchronisation" x="-127" y="-212">consensusFail?</label>
 			<nail x="85" y="-221"/>
 			<nail x="-144" y="-221"/>
 		</transition>
@@ -244,7 +241,7 @@ void resetTick() {
 		<transition id="id7">
 			<source ref="id2"/>
 			<target ref="id3"/>
-			<label kind="synchronisation" x="-127" y="-144">slotSuccess?</label>
+			<label kind="synchronisation" x="-127" y="-144">consensusSuccess?</label>
 			<nail x="85" y="-153"/>
 		</transition>
 		<transition id="id8">
@@ -263,7 +260,7 @@ void resetTick() {
 		<transition id="id10">
 			<source ref="id0"/>
 			<target ref="id1"/>
-			<label kind="synchronisation" x="-364" y="-25">slotStarted[slotCur]?</label>
+			<label kind="synchronisation" x="-364" y="-25">decisionStarted?</label>
 		</transition>
 	</template>
 	<template>
@@ -316,7 +313,6 @@ clock x;</declaration>
 	</template>
 	<template>
 		<name>NConsensusChecker</name>
-		<parameter>const s_id slotID</parameter>
 		<declaration>
 
 int[0,N] cntSlotDone = 0;
@@ -342,26 +338,17 @@ void clearInputs(const bool &amp;value[V]) {
 
 void doSuccess() {
     clearInputs(ballotStates[0].c.value);
-    if (slotCur &lt; SLOTMAX) {
-        slotCur++;
-    }
-}
-
-void doFail() {
-    if (slotCur &lt; SLOTMAX) {
-        slotCur++;
-    }
 }
 
 bool isAllAgreedLocal(int[0,N-1] nID) {
     bool value[V] = NOVALUE;
 
     for (n : n_id) {
-        if (qs[slotCur][nID].validators[n] != N) {
+        if (qs[nID].validators[n] != N) {
             if (value == NOVALUE) {
-                value = ballotStates[qs[slotCur][nID].validators[n]].c.value;
+                value = ballotStates[qs[nID].validators[n]].c.value;
             } else {
-                if (ballotStates[qs[slotCur][nID].validators[n]].c.value != value) {
+                if (ballotStates[qs[nID].validators[n]].c.value != value) {
                     return false;
                 }
             }
@@ -380,14 +367,14 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<name x="85" y="-42">LiveAndSafe</name>
 		</location>
 		<location id="id22" x="-161" y="-8">
-			<name x="-171" y="-42">SlotDone</name>
+			<name x="-171" y="-42">ConsensusProcessDone</name>
 			<committed/>
 		</location>
 		<location id="id23" x="-442" y="-8">
-			<name x="-527" y="0">SlotStarted</name>
+			<name x="-527" y="0">StartConsensus</name>
 		</location>
 		<location id="id24" x="-722" y="-8">
-			<name x="-732" y="-42">StartSlot</name>
+			<name x="-732" y="-42">ReadyConsensus</name>
 		</location>
 		<location id="id25" x="-297" y="-8">
 			<committed/>
@@ -397,27 +384,26 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id25"/>
 			<target ref="id22"/>
 			<label kind="guard" x="-289" y="-161">forall (i : n_id) nominatedValues[i] != NOVALUE
-&amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE
-&amp;&amp; cntSlotDone == totalParticipants[slotID]-F</label>
+&amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE</label>
 			<nail x="-297" y="-93"/>
 			<nail x="-161" y="-93"/>
 		</transition>
 		<transition id="id27">
 			<source ref="id25"/>
 			<target ref="id22"/>
-			<label kind="guard" x="-280" y="-59">cntSlotDone == totalParticipants[slotID]</label>
+			<label kind="guard" x="-280" y="-59">cntSlotDone == totalParticipants</label>
 		</transition>
 		<transition id="id28">
 			<source ref="id25"/>
 			<target ref="id23"/>
-			<label kind="guard" x="-425" y="76">cntSlotDone &lt; totalParticipants[slotID]</label>
+			<label kind="guard" x="-425" y="76">cntSlotDone &lt; totalParticipants</label>
 			<label kind="comments" x="-425" y="51">While slot processes are in progress</label>
 			<nail x="-365" y="51"/>
 		</transition>
 		<transition id="id29">
 			<source ref="id23"/>
 			<target ref="id25"/>
-			<label kind="synchronisation" x="-408" y="-110">slotDone?</label>
+			<label kind="synchronisation" x="-425" y="-110">decisionDone?</label>
 			<label kind="assignment" x="-425" y="-93">cntSlotDone++</label>
 			<nail x="-374" y="-68"/>
 		</transition>
@@ -425,8 +411,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id22"/>
 			<target ref="id19"/>
 			<label kind="guard" x="-153" y="119">exists (i : n_id) !isAllAgreedLocal(i)</label>
-			<label kind="synchronisation" x="-153" y="136">slotFail!</label>
-			<label kind="assignment" x="-153" y="153">doFail()</label>
+			<label kind="synchronisation" x="-153" y="136">consensusFail!</label>
 			<nail x="-161" y="170"/>
 		</transition>
 		<transition id="id31">
@@ -434,8 +419,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<target ref="id19"/>
 			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_nRound[i] == BOUNDARY
 &amp;&amp; forall (i : n_id) nominationStates[i].accepted == ISALLFALSE</label>
-			<label kind="synchronisation" x="-425" y="212">slotFail!</label>
-			<label kind="assignment" x="-425" y="229">doFail()</label>
+			<label kind="synchronisation" x="-425" y="212">consensusFail!</label>
 			<nail x="-442" y="170"/>
 		</transition>
 		<transition id="id32">
@@ -444,23 +428,21 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<label kind="guard" x="-425" y="-365">(exists (i : n_id) cur_nRound[i] == BOUNDARY
 || exists (i : n_id) cur_b_cnt[i] == BOUNDARY)
 &amp;&amp; exists (i : n_id) nominationStates[i].accepted != ISALLFALSE</label>
-			<label kind="synchronisation" x="-425" y="-306">slotTimeout!</label>
-			<label kind="assignment" x="-425" y="-289">doFail()</label>
+			<label kind="synchronisation" x="-425" y="-306">consensusTimeout!</label>
 			<nail x="-442" y="-272"/>
 		</transition>
 		<transition id="id33">
 			<source ref="id22"/>
 			<target ref="id21"/>
 			<label kind="guard" x="-85" y="0">forall (i : n_id) isAllAgreedLocal(i)</label>
-			<label kind="synchronisation" x="-85" y="17">slotSuccess!</label>
+			<label kind="synchronisation" x="-85" y="17">consensusSuccess!</label>
 			<label kind="assignment" x="-85" y="34">doSuccess()</label>
 		</transition>
 		<transition id="id34">
 			<source ref="id24"/>
 			<target ref="id23"/>
-			<label kind="guard" x="-705" y="0">slotCur == slotID
-&amp;&amp; hasHigherlayerInput()</label>
-			<label kind="synchronisation" x="-705" y="34">slotStarted[slotCur]!</label>
+			<label kind="guard" x="-705" y="0">hasHigherlayerInput()</label>
+			<label kind="synchronisation" x="-705" y="34">decisionStarted!</label>
 			<label kind="assignment" x="-705" y="51">cntSlotDone = 0</label>
 		</transition>
 	</template>
@@ -491,10 +473,10 @@ void initNominationState() {
     */
     int[0,N] totalValidators = getTotalValidators(myID);
 
-    if (qs[slotCur][myID].threshold == 0) { 
+    if (qs[myID].threshold == 0) { 
         // update a threshold in `qs` for nodeID (the template parameter)
         int thr_numerator = totalValidators*THRESHOLD_PERCENT;
-        qs[slotCur][myID].threshold = (thr_numerator % 100 == 0) 
+        qs[myID].threshold = (thr_numerator % 100 == 0) 
                                         ? thr_numerator/100 
                                         : thr_numerator/100 + 1;
     }
@@ -511,17 +493,17 @@ void processMessageNomination(bool hasNominatedValues) {
         // how many validators have accepted on `v`
         /* 
           For the current node
-          - qs[slotCur][myID]: quorum set
-          - qs[slotCur][myID].validators[n]: a validator
-          - qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
+          - qs[myID]: quorum set
+          - qs[myID].validators[n]: a validator
+          - qs[qs[myID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
         */
 
         for (id : int[0,N-1]) {
             if (
-                qs[slotCur][myID].validators[id] != N
-                &amp;&amp; qs[slotCur][myID].validators[id] != myID
+                qs[myID].validators[id] != N
+                &amp;&amp; qs[myID].validators[id] != myID
                 &amp;&amp; nominationStates[
-                    qs[slotCur][myID].validators[id]
+                    qs[myID].validators[id]
                 ].accepted[v]
             ) {
                 cntValues++; // count for acceptance of my validators on `v`
@@ -530,7 +512,7 @@ void processMessageNomination(bool hasNominatedValues) {
 
         // 
         if (
-            cntValues &gt; (getTotalValidators(myID) - qs[slotCur][myID].threshold) // blocking threshold
+            cntValues &gt; (getTotalValidators(myID) - qs[myID].threshold) // blocking threshold
             &amp;&amp; !nominationStates[myID].accepted[v]
         ) {
             nominationStates[myID].accepted[v] = true;
@@ -543,21 +525,21 @@ void processMessageNomination(bool hasNominatedValues) {
         cntValues = 0;
 
         for (id : int[0,N-1]) {
-            if (qs[slotCur][myID].validators[id] != N) { 
+            if (qs[myID].validators[id] != N) { 
                 // check my validator's quorum slices
                 cntValues_qs = 0;
                 for (qs_id : int[0,N-1]) {
-                    if (qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id] != N) {
+                    if (qs[qs[myID].validators[id]].validators[qs_id] != N) {
                         if (
                             nominationStates[
-                                qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id]
+                                qs[qs[myID].validators[id]].validators[qs_id]
                             ].accepted[v]
                         ) {
                             cntValues_qs++;
                         }
                         else if (
                             nominationStates[
-                                qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id]
+                                qs[qs[myID].validators[id]].validators[qs_id]
                             ].voted[v]
                         ) {
                             cntValues_qs++;
@@ -565,13 +547,13 @@ void processMessageNomination(bool hasNominatedValues) {
                     }
                 }
 
-                if (cntValues_qs &gt;= qs[slotCur][qs[slotCur][myID].validators[id]].threshold) {
+                if (cntValues_qs &gt;= qs[qs[myID].validators[id]].threshold) {
                     cntValues++;
                 }
             }
         }
 
-        if (cntValues &gt;= qs[slotCur][myID].threshold
+        if (cntValues &gt;= qs[myID].threshold
             &amp;&amp; !nominationStates[myID].accepted[v]) {
             nominationStates[myID].accepted[v] = true;
             nominationStates[myID].voted[v] = false;
@@ -583,15 +565,15 @@ void processMessageNomination(bool hasNominatedValues) {
         cntValues = 0;
 
         for (id : int[0,N-1]) {
-            if (qs[slotCur][myID].validators[id] != N) {
+            if (qs[myID].validators[id] != N) {
                 cntValues_qs = 0;
 
                 // check my validator's quorum slices
                 for (qs_id : int[0,N-1]) {
-                    if (qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id] != N) {
+                    if (qs[qs[myID].validators[id]].validators[qs_id] != N) {
                         if (
                             nominationStates[
-                                qs[slotCur][qs[slotCur][myID].validators[id]].validators[qs_id]
+                                qs[qs[myID].validators[id]].validators[qs_id]
                             ].accepted[v]
                         ) {
                             cntValues_qs++;
@@ -599,13 +581,13 @@ void processMessageNomination(bool hasNominatedValues) {
                     }
                 }
 
-                if (cntValues_qs &gt;= qs[slotCur][qs[slotCur][myID].validators[id]].threshold) {
+                if (cntValues_qs &gt;= qs[qs[myID].validators[id]].threshold) {
                     cntValues++;
                 }
             }
         }
 
-        if (cntValues &gt;= qs[slotCur][myID].threshold) {
+        if (cntValues &gt;= qs[myID].threshold) {
             if (!nominationStates[myID].accepted[v]) {
                 nominationStates[myID].accepted[v] = true;
                 nominationStates[myID].voted[v] = false;
@@ -623,9 +605,9 @@ int getHighestPriorityNode(int[0,BOUNDARY] cur_round_in) {
     int[0,N] current = 0;
 
     for (id : int[0,N-1]) {
-        if (qs[slotCur][myID].validators[id] != N) {
+        if (qs[myID].validators[id] != N) {
             if (current == highest) { 
-                return qs[slotCur][myID].validators[id];
+                return qs[myID].validators[id];
             }
             else {
                 current++;
@@ -671,7 +653,7 @@ void newRound(bool hasNominatedValues) {
     int[0,N] nodeIDHighest;
 
     // check if itself exists in its quorum set
-    if (qs[slotCur][myID].validators[myID] == myID) {
+    if (qs[myID].validators[myID] == myID) {
         
         // if its nomination tick reaches its current round value
         if (tickNomination[myID] == cur_nRound[myID]) {
@@ -733,7 +715,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id42">
 			<source ref="id37"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-722" y="-212">slotSuccess?</label>
+			<label kind="synchronisation" x="-722" y="-212">consensusSuccess?</label>
 			<label kind="assignment" x="-722" y="-195">resetNominationState()</label>
 			<nail x="-501" y="-178"/>
 			<nail x="-739" y="-178"/>
@@ -779,7 +761,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id49">
 			<source ref="id35"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-137" y="280">slotTimeout?</label>
+			<label kind="synchronisation" x="-137" y="280">consensusTimeout?</label>
 			<label kind="assignment" x="-136" y="297">resetNominationState()</label>
 			<nail x="153" y="280"/>
 			<nail x="-740" y="280"/>
@@ -787,7 +769,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id50">
 			<source ref="id35"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-136" y="229">slotFail?</label>
+			<label kind="synchronisation" x="-136" y="229">consensusFail?</label>
 			<label kind="assignment" x="-136" y="246">resetNominationState()</label>
 			<nail x="153" y="229"/>
 			<nail x="-739" y="229"/>
@@ -795,7 +777,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id51">
 			<source ref="id36"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-722" y="280">slotTimeout?</label>
+			<label kind="synchronisation" x="-722" y="280">consensusTimeout?</label>
 			<label kind="assignment" x="-722" y="297">resetNominationState()</label>
 			<nail x="-187" y="280"/>
 			<nail x="-739" y="280"/>
@@ -803,7 +785,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id52">
 			<source ref="id37"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-722" y="-153">slotTimeout?</label>
+			<label kind="synchronisation" x="-722" y="-153">consensusTimeout?</label>
 			<label kind="assignment" x="-722" y="-136">resetNominationState()</label>
 			<nail x="-501" y="-119"/>
 			<nail x="-739" y="-119"/>
@@ -811,7 +793,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id53">
 			<source ref="id36"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-722" y="229">slotFail?</label>
+			<label kind="synchronisation" x="-722" y="229">consensusFail?</label>
 			<label kind="assignment" x="-722" y="246">resetNominationState()</label>
 			<nail x="-187" y="229"/>
 			<nail x="-739" y="229"/>
@@ -819,7 +801,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id54">
 			<source ref="id37"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-722" y="-93">slotFail?</label>
+			<label kind="synchronisation" x="-722" y="-93">consensusFail?</label>
 			<label kind="assignment" x="-722" y="-76">resetNominationState()</label>
 			<nail x="-501" y="-59"/>
 			<nail x="-739" y="-59"/>
@@ -827,7 +809,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id55">
 			<source ref="id35"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-722" y="-272">slotSuccess?</label>
+			<label kind="synchronisation" x="-722" y="-272">consensusSuccess?</label>
 			<label kind="assignment" x="-722" y="-255">resetNominationState()</label>
 			<nail x="153" y="-238"/>
 			<nail x="-739" y="-238"/>
@@ -841,13 +823,12 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id57">
 			<source ref="id38"/>
 			<target ref="id37"/>
-			<label kind="synchronisation" x="-722" y="8">slotStarted[slotCur]?</label>
+			<label kind="synchronisation" x="-722" y="8">decisionStarted?</label>
 			<label kind="assignment" x="-722" y="25">initNominationState()</label>
 		</transition>
 	</template>
 	<template>
 		<name>BConsensusChecker</name>
-		<parameter>const s_id slotID</parameter>
 		<declaration>
 
 int[0,N] cntSlotDone = 0;
@@ -873,26 +854,17 @@ void clearInputs(const bool &amp;value[V]) {
 
 void doSuccess() {
     clearInputs(ballotStates[0].c.value);
-    if (slotCur &lt; SLOTMAX) {
-        slotCur++;
-    }
-}
-
-void doFail() {
-    if (slotCur &lt; SLOTMAX) {
-        slotCur++;
-    }
 }
 
 bool isAllAgreedLocal(int[0,N-1] nID) {
     bool value[V] = NOVALUE;
 
     for (n : n_id) {
-        if (qs[slotCur][nID].validators[n] != N) {
+        if (qs[nID].validators[n] != N) {
             if (value == NOVALUE) {
-                value = ballotStates[qs[slotCur][nID].validators[n]].c.value;
+                value = ballotStates[qs[nID].validators[n]].c.value;
             } else {
-                if (ballotStates[qs[slotCur][nID].validators[n]].c.value != value) {
+                if (ballotStates[qs[nID].validators[n]].c.value != value) {
                     return false;
                 }
             }
@@ -911,14 +883,14 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<name x="85" y="-42">LiveAndSafe</name>
 		</location>
 		<location id="id61" x="-161" y="-8">
-			<name x="-171" y="-42">SlotDone</name>
+			<name x="-171" y="-42">ConsensusProcessDone</name>
 			<committed/>
 		</location>
 		<location id="id62" x="-442" y="-8">
-			<name x="-527" y="0">SlotStarted</name>
+			<name x="-527" y="0">StartConsensus</name>
 		</location>
 		<location id="id63" x="-722" y="-8">
-			<name x="-732" y="-42">StartSlot</name>
+			<name x="-731" y="-42">ReadyConsensus</name>
 		</location>
 		<location id="id64" x="-297" y="-8">
 			<committed/>
@@ -928,27 +900,26 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id64"/>
 			<target ref="id61"/>
 			<label kind="guard" x="-289" y="-161">forall (i : n_id) nominatedValues[i] != NOVALUE
-&amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE
-&amp;&amp; cntSlotDone == totalParticipants[slotID]-F</label>
+&amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE</label>
 			<nail x="-297" y="-93"/>
 			<nail x="-161" y="-93"/>
 		</transition>
 		<transition id="id66">
 			<source ref="id64"/>
 			<target ref="id61"/>
-			<label kind="guard" x="-280" y="-59">cntSlotDone == totalParticipants[slotID]</label>
+			<label kind="guard" x="-280" y="-59">cntSlotDone == totalParticipants</label>
 		</transition>
 		<transition id="id67">
 			<source ref="id64"/>
 			<target ref="id62"/>
-			<label kind="guard" x="-425" y="76">cntSlotDone &lt; totalParticipants[slotID]</label>
+			<label kind="guard" x="-425" y="76">cntSlotDone &lt; totalParticipants</label>
 			<label kind="comments" x="-425" y="51">While slot processes are in progress</label>
 			<nail x="-365" y="51"/>
 		</transition>
 		<transition id="id68">
 			<source ref="id62"/>
 			<target ref="id64"/>
-			<label kind="synchronisation" x="-408" y="-110">slotDone?</label>
+			<label kind="synchronisation" x="-425" y="-110">decisionDone?</label>
 			<label kind="assignment" x="-425" y="-93">cntSlotDone++</label>
 			<nail x="-374" y="-68"/>
 		</transition>
@@ -956,8 +927,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id61"/>
 			<target ref="id58"/>
 			<label kind="guard" x="-153" y="119">exists (i : n_id) !isAllAgreedLocal(i)</label>
-			<label kind="synchronisation" x="-153" y="136">slotFail!</label>
-			<label kind="assignment" x="-153" y="153">doFail()</label>
+			<label kind="synchronisation" x="-153" y="136">consensusFail!</label>
 			<nail x="-161" y="170"/>
 		</transition>
 		<transition id="id70">
@@ -965,8 +935,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<target ref="id58"/>
 			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_nRound[i] == BOUNDARY
 &amp;&amp; forall (i : n_id) nominationStates[i].accepted == ISALLFALSE</label>
-			<label kind="synchronisation" x="-425" y="212">slotFail!</label>
-			<label kind="assignment" x="-425" y="229">doFail()</label>
+			<label kind="synchronisation" x="-425" y="212">consensusFail!</label>
 			<nail x="-442" y="170"/>
 		</transition>
 		<transition id="id71">
@@ -975,23 +944,21 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<label kind="guard" x="-425" y="-365">(exists (i : n_id) cur_nRound[i] == BOUNDARY
 || exists (i : n_id) cur_b_cnt[i] == BOUNDARY)
 &amp;&amp; exists (i : n_id) nominationStates[i].accepted != ISALLFALSE</label>
-			<label kind="synchronisation" x="-425" y="-306">slotTimeout!</label>
-			<label kind="assignment" x="-425" y="-289">doFail()</label>
+			<label kind="synchronisation" x="-425" y="-306">consensusTimeout!</label>
 			<nail x="-442" y="-272"/>
 		</transition>
 		<transition id="id72">
 			<source ref="id61"/>
 			<target ref="id60"/>
 			<label kind="guard" x="-85" y="0">forall (i : n_id) isAllAgreedLocal(i)</label>
-			<label kind="synchronisation" x="-85" y="17">slotSuccess!</label>
+			<label kind="synchronisation" x="-85" y="17">consensusSuccess!</label>
 			<label kind="assignment" x="-85" y="34">doSuccess()</label>
 		</transition>
 		<transition id="id73">
 			<source ref="id63"/>
 			<target ref="id62"/>
-			<label kind="guard" x="-705" y="0">slotCur == slotID
-&amp;&amp; hasHigherlayerInput()</label>
-			<label kind="synchronisation" x="-705" y="34">slotStarted[slotCur]!</label>
+			<label kind="guard" x="-705" y="0">hasHigherlayerInput()</label>
+			<label kind="synchronisation" x="-705" y="34">decisionStarted!</label>
 			<label kind="assignment" x="-705" y="51">cntSlotDone = 0</label>
 		</transition>
 	</template>
@@ -1025,76 +992,76 @@ bool checkAcceptedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candida
     bool isVBlocked = false;
 
     for (n : int[0,N-1]) {
-        if (N - n + cntQuorumTH &lt; qs[slotCur][nodeIndex].threshold) {
+        if (N - n + cntQuorumTH &lt; qs[nodeIndex].threshold) {
             return false;
         }
-        if (qs[slotCur][nodeIndex].validators[n] != N) {
+        if (qs[nodeIndex].validators[n] != N) {
             isVBlocked = false;
 
-            // on `qs[slotCur][nodeIndex].validators[n]`
+            // on `qs[nodeIndex].validators[n]`
             if ( /// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][nodeIndex].validators[n]
+                    qs[nodeIndex].validators[n]
                 ].curState == SCPPrepare
             ) {
                 if (
                     ( // p
-                        ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter != 0
-                        &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
-                            &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter &gt;= candidate.counter)
+                        ballotStates[qs[nodeIndex].validators[n]].p.counter != 0
+                        &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].p.value == candidate.value
+                            &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].p.counter &gt;= candidate.counter)
                     ) 
                     || ( // pp
-                        ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.counter != 0
-                        &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.value == candidate.value
-                            &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.counter &gt;= candidate.counter)
+                        ballotStates[qs[nodeIndex].validators[n]].pp.counter != 0
+                        &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].pp.value == candidate.value
+                            &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].pp.counter &gt;= candidate.counter)
                     )
                 ) {
-                    if (qs[slotCur][nodeIndex].validators[n] != nodeIndex) {
+                    if (qs[nodeIndex].validators[n] != nodeIndex) {
                         cntQuorumTH++;
                         isVBlocked = true;
                     }
                 }
                 if (!isVBlocked
-                    &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == candidate.value
-                        &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].b.counter &gt;= candidate.counter)) {
+                    &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].b.value == candidate.value
+                        &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].b.counter &gt;= candidate.counter)) {
                     cntQuorumTH++;
                 }
             }
             else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][nodeIndex].validators[n]
+                    qs[nodeIndex].validators[n]
                 ].curState == SCPConfirm
             ) {
                 if ( // p
-                    ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter &gt;= candidate.counter
+                    ballotStates[qs[nodeIndex].validators[n]].p.value == candidate.value
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].p.counter &gt;= candidate.counter
                 ) {
-                    if (qs[slotCur][nodeIndex].validators[n] != nodeIndex) {
+                    if (qs[nodeIndex].validators[n] != nodeIndex) {
                         cntQuorumTH++;
                         isVBlocked = true;
                     }
                 }
                 if (!isVBlocked
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == candidate.value) {
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].b.value == candidate.value) {
                     cntQuorumTH++;
                 }
             }
             else { /// Phase: SCPExternalize
                 if ( // c
-                    ballotStates[qs[slotCur][nodeIndex].validators[n]].c.value == candidate.value
+                    ballotStates[qs[nodeIndex].validators[n]].c.value == candidate.value
                 ) {
-                    if (qs[slotCur][nodeIndex].validators[n] != nodeIndex) {
+                    if (qs[nodeIndex].validators[n] != nodeIndex) {
                         cntQuorumTH++;
                         isVBlocked = true;
                     }
                 }
                 if (!isVBlocked
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].c.value == candidate.value) {
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].c.value == candidate.value) {
                     cntQuorumTH++;
                 }
             }
 
-            if (cntQuorumTH &gt;= qs[slotCur][nodeIndex].threshold) {
+            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
                 return true;
             }
         }
@@ -1130,53 +1097,53 @@ bool checkAcceptedPrepare(const SCPBallot &amp;candidate) {
     }
 
     for (n : int[0,N-1]) {
-        // on `qs[slotCur][nodeIndex].validators[n]`
-        if (qs[slotCur][myID].validators[n] != N) {
+        // on `qsx].validators[n]`
+        if (qs[myID].validators[n] != N) {
             if ( /// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPPrepare
             ) {
                 if (
                     ( // p
-                        ballotStates[qs[slotCur][myID].validators[n]].p.counter != 0
-                        &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].p.value == candidate.value
-                            &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].p.counter &gt;= candidate.counter)
+                        ballotStates[qs[myID].validators[n]].p.counter != 0
+                        &amp;&amp; (ballotStates[qs[myID].validators[n]].p.value == candidate.value
+                            &amp;&amp; ballotStates[qs[myID].validators[n]].p.counter &gt;= candidate.counter)
                     ) 
                     || ( // pp
-                        ballotStates[qs[slotCur][myID].validators[n]].pp.counter != 0
-                            &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].pp.value == candidate.value
-                            &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].pp.counter &gt;= candidate.counter)
+                        ballotStates[qs[myID].validators[n]].pp.counter != 0
+                            &amp;&amp; (ballotStates[qs[myID].validators[n]].pp.value == candidate.value
+                            &amp;&amp; ballotStates[qs[myID].validators[n]].pp.counter &gt;= candidate.counter)
                     )
                 ) {
-                    if (qs[slotCur][myID].validators[n] != myID) {
+                    if (qs[myID].validators[n] != myID) {
                         cntVBlockTH++;
                     }
                 }
             }
             else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPConfirm
             ) {
                 if ( // p
-                    ballotStates[qs[slotCur][myID].validators[n]].p.value == candidate.value
-                    &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].p.counter &gt;= candidate.counter
+                    ballotStates[qs[myID].validators[n]].p.value == candidate.value
+                    &amp;&amp; ballotStates[qs[myID].validators[n]].p.counter &gt;= candidate.counter
                 ) {
-                    if (qs[slotCur][myID].validators[n] != myID) {
+                    if (qs[myID].validators[n] != myID) {
                         cntVBlockTH++;
                     }
                 }
             }
             else {  /// Phase: SCPExternalize
-                if (ballotStates[qs[slotCur][myID].validators[n]].c.value == candidate.value) {
-                    if (qs[slotCur][myID].validators[n] != myID) {
+                if (ballotStates[qs[myID].validators[n]].c.value == candidate.value) {
+                    if (qs[myID].validators[n] != myID) {
                         cntVBlockTH++;
                     }
                 }
             }
 
-            if (cntVBlockTH &gt; getTotalValidators(myID) - qs[slotCur][myID].threshold) {
+            if (cntVBlockTH &gt; getTotalValidators(myID) - qs[myID].threshold) {
                 return true;
             }
 
@@ -1184,7 +1151,7 @@ bool checkAcceptedPrepare(const SCPBallot &amp;candidate) {
                 cntQuorumTH++;
             }
 
-            if (cntQuorumTH &gt;= qs[slotCur][myID].threshold) {
+            if (cntQuorumTH &gt;= qs[myID].threshold) {
                 return true;
             }
         }
@@ -1199,51 +1166,51 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
     SCPBallot tempBallot;
 
     for (n : int[0,N-1]) {
-        if (qs[slotCur][myID].validators[n] != N) {
+        if (qs[myID].validators[n] != N) {
             isAgreed = false;
             tempBallot.counter = 0;
             tempBallot.value = NOVALUE;
 
             if (/// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPPrepare
             ) {
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
                         if (
-                            ballotStates[qs[slotCur][myID].validators[n]].b.value == newMessageBallots[j].value
-                            &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].b.counter &lt;= newMessageBallots[j].counter
+                            ballotStates[qs[myID].validators[n]].b.value == newMessageBallots[j].value
+                            &amp;&amp; ballotStates[qs[myID].validators[n]].b.counter &lt;= newMessageBallots[j].counter
                         ) {
 
-                            isAgreed = checkAcceptedPrepare(ballotStates[qs[slotCur][myID].validators[n]].b);
+                            isAgreed = checkAcceptedPrepare(ballotStates[qs[myID].validators[n]].b);
                             if (isAgreed) {
-                                tempBallot.counter = ballotStates[qs[slotCur][myID].validators[n]].b.counter;
-                                tempBallot.value = ballotStates[qs[slotCur][myID].validators[n]].b.value;
+                                tempBallot.counter = ballotStates[qs[myID].validators[n]].b.counter;
+                                tempBallot.value = ballotStates[qs[myID].validators[n]].b.value;
 
                             } else {
                                 if (
-                                    ballotStates[qs[slotCur][myID].validators[n]].p.counter != 0
-                                    &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].p.value == newMessageBallots[j].value
-                                        &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].p.counter &lt;= newMessageBallots[j].counter)
+                                    ballotStates[qs[myID].validators[n]].p.counter != 0
+                                    &amp;&amp; (ballotStates[qs[myID].validators[n]].p.value == newMessageBallots[j].value
+                                        &amp;&amp; ballotStates[qs[myID].validators[n]].p.counter &lt;= newMessageBallots[j].counter)
                                 ) {
 
-                                    isAgreed = checkAcceptedPrepare(ballotStates[qs[slotCur][myID].validators[n]].p);
+                                    isAgreed = checkAcceptedPrepare(ballotStates[qs[myID].validators[n]].p);
                                     if (isAgreed) {
-                                        tempBallot.counter = ballotStates[qs[slotCur][myID].validators[n]].p.counter;
-                                        tempBallot.value = ballotStates[qs[slotCur][myID].validators[n]].p.value;
+                                        tempBallot.counter = ballotStates[qs[myID].validators[n]].p.counter;
+                                        tempBallot.value = ballotStates[qs[myID].validators[n]].p.value;
                                     }
                                     else {
                                         if (
-                                            ballotStates[qs[slotCur][myID].validators[n]].pp.counter != 0
-                                            &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].pp.value == newMessageBallots[j].value
-                                                &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].pp.counter &lt;= newMessageBallots[j].counter)
+                                            ballotStates[qs[myID].validators[n]].pp.counter != 0
+                                            &amp;&amp; (ballotStates[qs[myID].validators[n]].pp.value == newMessageBallots[j].value
+                                                &amp;&amp; ballotStates[qs[myID].validators[n]].pp.counter &lt;= newMessageBallots[j].counter)
                                         ) {
 
-                                            isAgreed = checkAcceptedPrepare(ballotStates[qs[slotCur][myID].validators[n]].pp);
+                                            isAgreed = checkAcceptedPrepare(ballotStates[qs[myID].validators[n]].pp);
                                             if (isAgreed) {
-                                                tempBallot.counter = ballotStates[qs[slotCur][myID].validators[n]].pp.counter;
-                                                tempBallot.value = ballotStates[qs[slotCur][myID].validators[n]].pp.value;
+                                                tempBallot.counter = ballotStates[qs[myID].validators[n]].pp.counter;
+                                                tempBallot.value = ballotStates[qs[myID].validators[n]].pp.value;
                                             }
                                         }
                                     }
@@ -1255,12 +1222,12 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
             }
             else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPConfirm
             ) {
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
-                        if (ballotStates[qs[slotCur][myID].validators[n]].c.value == newMessageBallots[j].value) {
+                        if (ballotStates[qs[myID].validators[n]].c.value == newMessageBallots[j].value) {
                             
                             isAgreed = checkAcceptedPrepare(newMessageBallots[j]);
                             if (isAgreed) {
@@ -1268,8 +1235,8 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
                                 tempBallot.value = newMessageBallots[j].value;
                             }
                             else {
-                                if (ballotStates[qs[slotCur][myID].validators[n]].p.counter &lt; newMessageBallots[j].counter) {
-                                    tempBallot.counter = ballotStates[qs[slotCur][myID].validators[n]].p.counter;
+                                if (ballotStates[qs[myID].validators[n]].p.counter &lt; newMessageBallots[j].counter) {
+                                    tempBallot.counter = ballotStates[qs[myID].validators[n]].p.counter;
                                     tempBallot.value = newMessageBallots[j].value;
                                     isAgreed = checkAcceptedPrepare(tempBallot);
                                 }
@@ -1281,7 +1248,7 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
             else { /// Phase: SCPConfirm
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
-                        if (ballotStates[qs[slotCur][myID].validators[n]].c.value == newMessageBallots[j].value) {
+                        if (ballotStates[qs[myID].validators[n]].c.value == newMessageBallots[j].value) {
 
                             isAgreed = checkAcceptedPrepare(newMessageBallots[j]);
                             if (isAgreed) {
@@ -1314,26 +1281,26 @@ bool checkConfirmedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candid
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
-        if (N - n + cntQuorumTH &lt; qs[slotCur][nodeIndex].threshold) {
+        if (N - n + cntQuorumTH &lt; qs[nodeIndex].threshold) {
             return false;
         }
 
-        if (qs[slotCur][nodeIndex].validators[n] != N) {
+        if (qs[nodeIndex].validators[n] != N) {
             if ( /// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][nodeIndex].validators[n]
+                    qs[nodeIndex].validators[n]
                 ].curState == SCPPrepare
             ) {
                 if (
                     ( // p
-                        ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter != 0
-                        &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
-                            &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter &gt;= candidate.counter)
+                        ballotStates[qs[nodeIndex].validators[n]].p.counter != 0
+                        &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].p.value == candidate.value
+                            &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].p.counter &gt;= candidate.counter)
                     ) 
                     || ( // pp
-                        ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.counter != 0
-                        &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.value == candidate.value
-                            &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].pp.counter &gt;= candidate.counter)
+                        ballotStates[qs[nodeIndex].validators[n]].pp.counter != 0
+                        &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].pp.value == candidate.value
+                            &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].pp.counter &gt;= candidate.counter)
                     )
                 ) {
                     cntQuorumTH++;
@@ -1341,21 +1308,21 @@ bool checkConfirmedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candid
             }
             else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][nodeIndex].validators[n]
+                    qs[nodeIndex].validators[n]
                 ].curState == SCPConfirm
             ) {
-                if (ballotStates[qs[slotCur][nodeIndex].validators[n]].p.value == candidate.value
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].p.counter &gt;= candidate.counter) {
+                if (ballotStates[qs[nodeIndex].validators[n]].p.value == candidate.value
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].p.counter &gt;= candidate.counter) {
                     cntQuorumTH++;
                 }
             }
             else { /// Phase: SCPExternalize
-                if (ballotStates[qs[slotCur][nodeIndex].validators[n]].c.value == candidate.value) {
+                if (ballotStates[qs[nodeIndex].validators[n]].c.value == candidate.value) {
                     cntQuorumTH++;
                 }
             }
 
-            if (cntQuorumTH &gt;= qs[slotCur][nodeIndex].threshold) {
+            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
                 return true;
             }
         }
@@ -1368,16 +1335,16 @@ bool checkConfirmedPrepare(const SCPBallot &amp;candidate) {
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
-        if (N - n + cntQuorumTH &lt; qs[slotCur][myID].threshold) {
+        if (N - n + cntQuorumTH &lt; qs[myID].threshold) {
             return false;
         }
 
-        if (qs[slotCur][myID].validators[n] != N) {
+        if (qs[myID].validators[n] != N) {
             if (checkConfirmedPrepareQuorum(n, candidate)) {
                 cntQuorumTH++;
             }
 
-            if (cntQuorumTH &gt;= qs[slotCur][myID].threshold) {
+            if (cntQuorumTH &gt;= qs[myID].threshold) {
                 return true;
             }
         }
@@ -1392,37 +1359,37 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
     SCPBallot tempBallot;
 
     for (n : int[0,N-1]) {
-        if (qs[slotCur][myID].validators[n] != N) {
+        if (qs[myID].validators[n] != N) {
             isAgreed = false;
             tempBallot.counter = 0;
             tempBallot.value = NOVALUE;
             if ( /// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPPrepare
             ) {
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
                         if ( // p
-                            ballotStates[qs[slotCur][myID].validators[n]].p.counter != 0
-                             &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].p.value == newMessageBallots[j].value
-                             &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].p.counter &lt;= newMessageBallots[j].counter)
+                            ballotStates[qs[myID].validators[n]].p.counter != 0
+                             &amp;&amp; (ballotStates[qs[myID].validators[n]].p.value == newMessageBallots[j].value
+                             &amp;&amp; ballotStates[qs[myID].validators[n]].p.counter &lt;= newMessageBallots[j].counter)
                         ) {
 
-                            isAgreed = checkConfirmedPrepare(ballotStates[qs[slotCur][myID].validators[n]].p);
+                            isAgreed = checkConfirmedPrepare(ballotStates[qs[myID].validators[n]].p);
                             if (isAgreed) {
-                                tempBallot.counter = ballotStates[qs[slotCur][myID].validators[n]].p.counter;
-                                tempBallot.value = ballotStates[qs[slotCur][myID].validators[n]].p.value;
+                                tempBallot.counter = ballotStates[qs[myID].validators[n]].p.counter;
+                                tempBallot.value = ballotStates[qs[myID].validators[n]].p.value;
                             } else {
                                 if ( // pp
-                                    ballotStates[qs[slotCur][myID].validators[n]].pp.counter != 0 
-                                    &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].pp.value == newMessageBallots[j].value 
-                                        &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].pp.counter &lt;= newMessageBallots[j].counter)) {
+                                    ballotStates[qs[myID].validators[n]].pp.counter != 0 
+                                    &amp;&amp; (ballotStates[qs[myID].validators[n]].pp.value == newMessageBallots[j].value 
+                                        &amp;&amp; ballotStates[qs[myID].validators[n]].pp.counter &lt;= newMessageBallots[j].counter)) {
 
-                                    isAgreed = checkConfirmedPrepare(ballotStates[qs[slotCur][myID].validators[n]].pp);
+                                    isAgreed = checkConfirmedPrepare(ballotStates[qs[myID].validators[n]].pp);
                                     if (isAgreed) {
-                                        tempBallot.counter = ballotStates[qs[slotCur][myID].validators[n]].pp.counter;
-                                        tempBallot.value = ballotStates[qs[slotCur][myID].validators[n]].pp.value;
+                                        tempBallot.counter = ballotStates[qs[myID].validators[n]].pp.counter;
+                                        tempBallot.value = ballotStates[qs[myID].validators[n]].pp.value;
                                     }
                                 }
                             }
@@ -1432,14 +1399,14 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
             }
             else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPConfirm
             ) {
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
-                        if (ballotStates[qs[slotCur][myID].validators[n]].p.counter &lt; newMessageBallots[j].counter) {
+                        if (ballotStates[qs[myID].validators[n]].p.counter &lt; newMessageBallots[j].counter) {
 
-                            tempBallot.counter = ballotStates[qs[slotCur][myID].validators[n]].p.counter;
+                            tempBallot.counter = ballotStates[qs[myID].validators[n]].p.counter;
                             tempBallot.value = newMessageBallots[j].value;
                             isAgreed = checkConfirmedPrepare(tempBallot);
                         }
@@ -1449,7 +1416,7 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
             else { /// Phase: SCPExternalize
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
-                        if (ballotStates[qs[slotCur][myID].validators[n]].c.value == newMessageBallots[j].value) {
+                        if (ballotStates[qs[myID].validators[n]].c.value == newMessageBallots[j].value) {
                             
                             isAgreed = checkConfirmedPrepare(newMessageBallots[j]);
                             if (isAgreed) {
@@ -1493,57 +1460,57 @@ bool checkAcceptedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V
     bool isVBlocked = false;
 
     for (n : int[0,N-1]) {
-        if (N - n + cntQuorumTH &lt; qs[slotCur][nodeIndex].threshold) {
+        if (N - n + cntQuorumTH &lt; qs[nodeIndex].threshold) {
             return false;
         }
 
-        if (qs[slotCur][nodeIndex].validators[n] != N) {
+        if (qs[nodeIndex].validators[n] != N) {
             isVBlocked = false;
             if ( /// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][nodeIndex].validators[n]
+                    qs[nodeIndex].validators[n]
                 ].curState == SCPPrepare
             ) {
-                if (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == ballotValue
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].h.counter &gt;= counterH) {
+                if (ballotStates[qs[nodeIndex].validators[n]].b.value == ballotValue
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].h.counter &gt;= counterH) {
                     cntQuorumTH++;
                 }
             }
             else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][nodeIndex].validators[n]
+                    qs[nodeIndex].validators[n]
                 ].curState == SCPConfirm
             ) {
-                if (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == ballotValue
-                    &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].c.counter &lt;= counterC
-                        &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].h.counter &gt;= counterH)) {
+                if (ballotStates[qs[nodeIndex].validators[n]].b.value == ballotValue
+                    &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].c.counter &lt;= counterC
+                        &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].h.counter &gt;= counterH)) {
 
                     cntQuorumTH++;
                     isVBlocked = true;
                 }
                 if (!isVBlocked
-                    &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == ballotValue
-                        &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].c.counter &lt;= counterC)) {
+                    &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].b.value == ballotValue
+                        &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].c.counter &lt;= counterC)) {
 
                     cntQuorumTH++;
                 }
             }
             else { /// Phase: SCPExternalize
-                if (ballotStates[qs[slotCur][nodeIndex].validators[n]].c.value == ballotValue
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].c.counter &lt;= counterC) {
+                if (ballotStates[qs[nodeIndex].validators[n]].c.value == ballotValue
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].c.counter &lt;= counterC) {
 
                     cntQuorumTH++;
                     isVBlocked = true;
                 }
                 if (!isVBlocked
-                    &amp;&amp; (ballotStates[qs[slotCur][nodeIndex].validators[n]].c.value == ballotValue
-                        &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].c.counter &lt;= counterC)) {
+                    &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].c.value == ballotValue
+                        &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].c.counter &lt;= counterC)) {
 
                     cntQuorumTH++;
                 }
             }
 
-            if (cntQuorumTH &gt;= qs[slotCur][nodeIndex].threshold) {
+            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
                 return true;
             }
         }
@@ -1557,31 +1524,31 @@ bool checkAcceptedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counter
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
-        if (qs[slotCur][myID].validators[n] != N) {
+        if (qs[myID].validators[n] != N) {
             if (/// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPPrepare
             ) {
                 // do nothing
             } else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPConfirm
             ) {
-                if (ballotStates[qs[slotCur][myID].validators[n]].b.value == ballotValue
-                    &amp;&amp; (ballotStates[qs[slotCur][myID].validators[n]].c.counter &lt;= counterC
-                        &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].h.counter &gt;= counterH)) {
+                if (ballotStates[qs[myID].validators[n]].b.value == ballotValue
+                    &amp;&amp; (ballotStates[qs[myID].validators[n]].c.counter &lt;= counterC
+                        &amp;&amp; ballotStates[qs[myID].validators[n]].h.counter &gt;= counterH)) {
                     cntVBlockTH++;
                 }
             } else { /// Phase: SCPExternalize
-                if (ballotStates[qs[slotCur][myID].validators[n]].c.value == ballotValue
-                    &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].c.counter &lt;= counterC) {
+                if (ballotStates[qs[myID].validators[n]].c.value == ballotValue
+                    &amp;&amp; ballotStates[qs[myID].validators[n]].c.counter &lt;= counterC) {
                     cntVBlockTH++;
                 }
             }
 
-            if (cntVBlockTH &gt; getTotalValidators(myID) - qs[slotCur][myID].threshold) {
+            if (cntVBlockTH &gt; getTotalValidators(myID) - qs[myID].threshold) {
                 return true;
             }
 
@@ -1589,7 +1556,7 @@ bool checkAcceptedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counter
                 cntQuorumTH++;
             }
 
-            if (cntQuorumTH &gt;= qs[slotCur][myID].threshold) {
+            if (cntQuorumTH &gt;= qs[myID].threshold) {
                 return true;
             }
         }
@@ -1605,33 +1572,33 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
     bool isAgreed = false;
 
     for (n : int[0,N-1]) {
-        if (qs[slotCur][myID].validators[n] != N) {
+        if (qs[myID].validators[n] != N) {
             if ( /// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPPrepare
-                &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].b.value == newMessageBallots[0].value
+                &amp;&amp; ballotStates[qs[myID].validators[n]].b.value == newMessageBallots[0].value
             ) {
-                if (ballotStates[qs[slotCur][myID].validators[n]].c.counter != 0) { // c
-                    curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
+                if (ballotStates[qs[myID].validators[n]].c.counter != 0) { // c
+                    curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].c.counter;
                 }
-                if (ballotStates[qs[slotCur][myID].validators[n]].h.counter != 0) { // h
-                    curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
+                if (ballotStates[qs[myID].validators[n]].h.counter != 0) { // h
+                    curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].h.counter;
                 }
 
             } else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPConfirm
-                &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].b.value == newMessageBallots[0].value
+                &amp;&amp; ballotStates[qs[myID].validators[n]].b.value == newMessageBallots[0].value
             ) {
-                curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
-                curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
+                curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].c.counter;
+                curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].h.counter;
                 
             } else { /// Phase: SCPExternalize
-                if (ballotStates[qs[slotCur][myID].validators[n]].c.value == newMessageBallots[0].value) {
-                    curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
-                    curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
+                if (ballotStates[qs[myID].validators[n]].c.value == newMessageBallots[0].value) {
+                    curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].c.counter;
+                    curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].h.counter;
                     curBoundaries[nextBoundary++] = INFINITY;
                 }
             }
@@ -1675,37 +1642,37 @@ bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
-        if (N - n + cntQuorumTH &lt; qs[slotCur][nodeIndex].threshold) {
+        if (N - n + cntQuorumTH &lt; qs[nodeIndex].threshold) {
             return false;
         }
 
-        if (qs[slotCur][nodeIndex].validators[n] != N) {
+        if (qs[nodeIndex].validators[n] != N) {
             if ( /// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][nodeIndex].validators[n]
+                    qs[nodeIndex].validators[n]
                 ].curState == SCPPrepare
             ) {
                 // do nothing
             } else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][nodeIndex].validators[n]
+                    qs[nodeIndex].validators[n]
                 ].curState == SCPConfirm
             ) {
 
-                if (ballotStates[qs[slotCur][nodeIndex].validators[n]].b.value == ballotValue
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].c.counter &lt;= counterC
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].h.counter &gt;= counterH) {
+                if (ballotStates[qs[nodeIndex].validators[n]].b.value == ballotValue
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].c.counter &lt;= counterC
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].h.counter &gt;= counterH) {
                     cntQuorumTH++;
                 }
             } else { /// Phase: SCPExternalize
 
-                if (ballotStates[qs[slotCur][nodeIndex].validators[n]].c.value == ballotValue
-                    &amp;&amp; ballotStates[qs[slotCur][nodeIndex].validators[n]].c.counter &lt;= counterC) {
+                if (ballotStates[qs[nodeIndex].validators[n]].c.value == ballotValue
+                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].c.counter &lt;= counterC) {
                     cntQuorumTH++;
                 }
             }
 
-            if (cntQuorumTH &gt;= qs[slotCur][nodeIndex].threshold) {
+            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
                 return true;
             }
         }
@@ -1718,8 +1685,8 @@ bool checkConfirmedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counte
     int[0,N] cntQuorumTH = 0;
 
     for (n : int[0,N-1]) {
-        if (qs[slotCur][myID].validators[n] != N) {
-            if (N - n + cntQuorumTH &lt; qs[slotCur][myID].threshold) {
+        if (qs[myID].validators[n] != N) {
+            if (N - n + cntQuorumTH &lt; qs[myID].threshold) {
                 return false;
             }
 
@@ -1727,7 +1694,7 @@ bool checkConfirmedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counte
                 cntQuorumTH++;
             }
 
-            if (cntQuorumTH &gt;= qs[slotCur][myID].threshold) {
+            if (cntQuorumTH &gt;= qs[myID].threshold) {
                 return true;
             }
         }
@@ -1743,27 +1710,27 @@ bool attemptConfirmCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &
     bool isAgreed = false;
 
     for (n : int[0,N-1]) {
-        if (qs[slotCur][myID].validators[n] != N) {
+        if (qs[myID].validators[n] != N) {
             if ( /// Phase: SCPPrepare
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPPrepare
             ) {
                 // do nothing
             } else if ( /// Phase: SCPConfirm
                 ballotStates[
-                    qs[slotCur][myID].validators[n]
+                    qs[myID].validators[n]
                 ].curState == SCPConfirm
-                &amp;&amp; ballotStates[qs[slotCur][myID].validators[n]].b.value == newMessageBallots[0].value
+                &amp;&amp; ballotStates[qs[myID].validators[n]].b.value == newMessageBallots[0].value
             ) {
 
-                curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
-                curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
+                curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].c.counter;
+                curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].h.counter;
             } else { /// Phase: SCPExternalize
 
-                if (ballotStates[qs[slotCur][myID].validators[n]].c.value == newMessageBallots[0].value) {
-                    curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].c.counter;
-                    curBoundaries[nextBoundary++] = ballotStates[qs[slotCur][myID].validators[n]].h.counter;
+                if (ballotStates[qs[myID].validators[n]].c.value == newMessageBallots[0].value) {
+                    curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].c.counter;
+                    curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].h.counter;
                     curBoundaries[nextBoundary++] = INFINITY;
                 }
             }
@@ -1871,9 +1838,9 @@ void processMessagePrepare() {
     
     // update newMessageNode
     for (n : n_id) {
-        if (qs[slotCur][myID].validators[n] != N) {
+        if (qs[myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
-                newMessageNode = qs[slotCur][myID].validators[n];
+                newMessageNode = qs[myID].validators[n];
             } else {
                 current++;
             }
@@ -1881,7 +1848,7 @@ void processMessagePrepare() {
     }
     
     // if new message is not valid, return.
-    if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
+    if (ballotStates[qs[myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
 
@@ -2076,9 +2043,9 @@ void processMessageCommit() {
 
     // update newMessageNode
     for (n : n_id) {
-        if (qs[slotCur][myID].validators[n] != N) {
+        if (qs[myID].validators[n] != N) {
             if (current == newMessageNodeIndex) {
-                newMessageNode = qs[slotCur][myID].validators[n];
+                newMessageNode = qs[myID].validators[n];
             } else {
                 current++;
             }
@@ -2086,7 +2053,7 @@ void processMessageCommit() {
     }
     
     // if new message is not valid, return.
-    if (ballotStates[qs[slotCur][myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
+    if (ballotStates[qs[myID].validators[newMessageNode]].b.counter &lt; ballotStates[myID].b.counter) {
         return;
     }
     
@@ -2378,7 +2345,7 @@ void newBCounter() {
 		<transition id="id94">
 			<source ref="id81"/>
 			<target ref="id74"/>
-			<label kind="synchronisation" x="161" y="-34">slotDone!</label>
+			<label kind="synchronisation" x="161" y="-34">decisionDone!</label>
 		</transition>
 		<transition id="id95">
 			<source ref="id80"/>
@@ -2412,7 +2379,7 @@ void newBCounter() {
 		<transition id="id100">
 			<source ref="id74"/>
 			<target ref="id77"/>
-			<label kind="synchronisation" x="-76" y="-195">slotTimeout?</label>
+			<label kind="synchronisation" x="-76" y="-195">consensusTimeout?</label>
 			<label kind="assignment" x="-76" y="-178">resetBallotState()</label>
 			<nail x="263" y="-161"/>
 			<nail x="-705" y="-161"/>
@@ -2420,7 +2387,7 @@ void newBCounter() {
 		<transition id="id101">
 			<source ref="id74"/>
 			<target ref="id77"/>
-			<label kind="synchronisation" x="-76" y="-127">slotFail?</label>
+			<label kind="synchronisation" x="-76" y="-127">consensusFail?</label>
 			<label kind="assignment" x="-76" y="-110">resetBallotState()</label>
 			<nail x="263" y="-93"/>
 			<nail x="-706" y="-93"/>
@@ -2428,7 +2395,7 @@ void newBCounter() {
 		<transition id="id102">
 			<source ref="id75"/>
 			<target ref="id77"/>
-			<label kind="synchronisation" x="-459" y="-195">slotTimeout?</label>
+			<label kind="synchronisation" x="-459" y="-195">consensusTimeout?</label>
 			<label kind="assignment" x="-459" y="-178">resetBallotState()</label>
 			<nail x="-102" y="-161"/>
 			<nail x="-705" y="-161"/>
@@ -2436,7 +2403,7 @@ void newBCounter() {
 		<transition id="id103">
 			<source ref="id75"/>
 			<target ref="id77"/>
-			<label kind="synchronisation" x="-459" y="-127">slotFail?</label>
+			<label kind="synchronisation" x="-459" y="-127">consensusFail?</label>
 			<label kind="assignment" x="-459" y="-110">resetBallotState()</label>
 			<nail x="-102" y="-93"/>
 			<nail x="-705" y="-93"/>
@@ -2444,7 +2411,7 @@ void newBCounter() {
 		<transition id="id104">
 			<source ref="id76"/>
 			<target ref="id77"/>
-			<label kind="synchronisation" x="-688" y="-195">slotTimeout?</label>
+			<label kind="synchronisation" x="-688" y="-195">consensusTimeout?</label>
 			<label kind="assignment" x="-688" y="-178">resetBallotState()</label>
 			<nail x="-484" y="-161"/>
 			<nail x="-705" y="-161"/>
@@ -2452,7 +2419,7 @@ void newBCounter() {
 		<transition id="id105">
 			<source ref="id76"/>
 			<target ref="id77"/>
-			<label kind="synchronisation" x="-688" y="-127">slotFail?</label>
+			<label kind="synchronisation" x="-688" y="-127">consensusFail?</label>
 			<label kind="assignment" x="-688" y="-110">resetBallotState()</label>
 			<nail x="-484" y="-93"/>
 			<nail x="-705" y="-93"/>
@@ -2460,7 +2427,7 @@ void newBCounter() {
 		<transition id="id106">
 			<source ref="id74"/>
 			<target ref="id77"/>
-			<label kind="synchronisation" x="-688" y="-263">slotSuccess?</label>
+			<label kind="synchronisation" x="-688" y="-263">consensusSuccess?</label>
 			<label kind="assignment" x="-688" y="-246">resetBallotState()</label>
 			<nail x="263" y="-229"/>
 			<nail x="-705" y="-229"/>
@@ -2513,7 +2480,7 @@ void newBCounter() {
 			<target ref="id113"/>
 			<label kind="guard" x="-399" y="93">exists (i : n_id) nominatedValues[i][valueID]
 &amp;&amp; !(forall (i : n_id) nominatedValues[i][valueID])</label>
-			<label kind="synchronisation" x="-399" y="76">slotDone?</label>
+			<label kind="synchronisation" x="-399" y="76">decisionDone?</label>
 			<nail x="-25" y="68"/>
 			<nail x="-416" y="68"/>
 		</transition>
@@ -2521,12 +2488,12 @@ void newBCounter() {
 			<source ref="id112"/>
 			<target ref="id111"/>
 			<label kind="guard" x="-221" y="-127">forall (i : n_id) nominatedValues[i][valueID]</label>
-			<label kind="synchronisation" x="-221" y="-144">slotDone?</label>
+			<label kind="synchronisation" x="-221" y="-144">decisionDone?</label>
 		</transition>
 		<transition id="id116">
 			<source ref="id113"/>
 			<target ref="id112"/>
-			<label kind="synchronisation" x="-306" y="-17">slotStarted[slotCur]?</label>
+			<label kind="synchronisation" x="-306" y="-17">decisionStarted?</label>
 		</transition>
 	</template>
 	<template>
