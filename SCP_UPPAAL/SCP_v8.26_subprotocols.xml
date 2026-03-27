@@ -315,7 +315,7 @@ clock x;</declaration>
 		<name>NConsensusChecker</name>
 		<declaration>
 
-int[0,N] cntSlotDone = 0;
+int[0,N] cntDecisionDone = 0;
 
 bool hasHigherlayerInput() {
     for (id : int[0,N-1]) {
@@ -383,28 +383,27 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id26">
 			<source ref="id25"/>
 			<target ref="id22"/>
-			<label kind="guard" x="-289" y="-161">forall (i : n_id) nominatedValues[i] != NOVALUE
-&amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE</label>
-			<nail x="-297" y="-93"/>
-			<nail x="-161" y="-93"/>
+			<label kind="guard" x="-289" y="-127">forall (i : n_id) nominatedValues[i] != NOVALUE
+&amp;&amp; cntDecisionDone == totalParticipants-F</label>
+			<nail x="-297" y="-76"/>
+			<nail x="-161" y="-76"/>
 		</transition>
 		<transition id="id27">
 			<source ref="id25"/>
 			<target ref="id22"/>
-			<label kind="guard" x="-280" y="-59">cntSlotDone == totalParticipants</label>
+			<label kind="guard" x="-280" y="-59">cntDecisionDone == totalParticipants</label>
 		</transition>
 		<transition id="id28">
 			<source ref="id25"/>
 			<target ref="id23"/>
-			<label kind="guard" x="-425" y="76">cntSlotDone &lt; totalParticipants</label>
-			<label kind="comments" x="-425" y="51">While slot processes are in progress</label>
+			<label kind="guard" x="-425" y="59">cntDecisionDone &lt; totalParticipants</label>
 			<nail x="-365" y="51"/>
 		</transition>
 		<transition id="id29">
 			<source ref="id23"/>
 			<target ref="id25"/>
 			<label kind="synchronisation" x="-425" y="-110">decisionDone?</label>
-			<label kind="assignment" x="-425" y="-93">cntSlotDone++</label>
+			<label kind="assignment" x="-425" y="-93">cntDecisionDone++</label>
 			<nail x="-374" y="-68"/>
 		</transition>
 		<transition id="id30">
@@ -425,8 +424,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id32">
 			<source ref="id23"/>
 			<target ref="id20"/>
-			<label kind="guard" x="-425" y="-365">(exists (i : n_id) cur_nRound[i] == BOUNDARY
-|| exists (i : n_id) cur_b_cnt[i] == BOUNDARY)
+			<label kind="guard" x="-425" y="-348">exists (i : n_id) cur_nRound[i] == BOUNDARY
 &amp;&amp; exists (i : n_id) nominationStates[i].accepted != ISALLFALSE</label>
 			<label kind="synchronisation" x="-425" y="-306">consensusTimeout!</label>
 			<nail x="-442" y="-272"/>
@@ -443,7 +441,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<target ref="id23"/>
 			<label kind="guard" x="-705" y="0">hasHigherlayerInput()</label>
 			<label kind="synchronisation" x="-705" y="34">decisionStarted!</label>
-			<label kind="assignment" x="-705" y="51">cntSlotDone = 0</label>
+			<label kind="assignment" x="-705" y="51">cntDecisionDone = 0</label>
 		</transition>
 	</template>
 	<template>
@@ -475,7 +473,7 @@ void initNominationState() {
 
     if (qs[myID].threshold == 0) { 
         // update a threshold in `qs` for nodeID (the template parameter)
-        int thr_numerator = totalValidators*THRESHOLD_PERCENT;
+        int thr_numerator = totalValidators * THRESHOLD_PERCENT;
         qs[myID].threshold = (thr_numerator % 100 == 0) 
                                         ? thr_numerator/100 
                                         : thr_numerator/100 + 1;
@@ -662,7 +660,7 @@ void newRound(bool hasNominatedValues) {
             processMessageNomination(hasNominatedValues);
 
             // mark as proceeding next round
-            if (cur_nRound[myID]&lt;BOUNDARY) {
+            if (cur_nRound[myID] &lt; BOUNDARY) {
                 cur_nRound[myID]++;
             }
 
@@ -723,7 +721,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id43">
 			<source ref="id41"/>
 			<target ref="id36"/>
-			<label kind="synchronisation" x="-340" y="-25">sthNominated[myID]!</label>
+			<label kind="synchronisation" x="-340" y="-25">tickAdvanceDone[myID]!</label>
 		</transition>
 		<transition id="id44">
 			<source ref="id37"/>
@@ -734,7 +732,6 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id45">
 			<source ref="id40"/>
 			<target ref="id36"/>
-			<label kind="synchronisation" x="-161" y="-136">tickAdvanceBallot[myID]!</label>
 			<nail x="-102" y="-93"/>
 		</transition>
 		<transition id="id46">
@@ -817,8 +814,8 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id56">
 			<source ref="id36"/>
 			<target ref="id35"/>
-			<label kind="synchronisation" x="-161" y="8">nominationDone[myID]?</label>
-			<label kind="assignment" x="-161" y="25">cur_nRound[myID] = INFINITY</label>
+			<label kind="synchronisation" x="-51" y="0">decisionDone!</label>
+			<label kind="assignment" x="-110" y="17">cur_nRound[myID] = INFINITY</label>
 		</transition>
 		<transition id="id57">
 			<source ref="id38"/>
@@ -831,7 +828,7 @@ void newRound(bool hasNominatedValues) {
 		<name>BConsensusChecker</name>
 		<declaration>
 
-int[0,N] cntSlotDone = 0;
+int[0,N] cntDecisionDone = 0;
 
 bool hasHigherlayerInput() {
     for (id : int[0,N-1]) {
@@ -907,12 +904,12 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id66">
 			<source ref="id64"/>
 			<target ref="id61"/>
-			<label kind="guard" x="-280" y="-59">cntSlotDone == totalParticipants</label>
+			<label kind="guard" x="-280" y="-59">cntDecisionDone == totalParticipants</label>
 		</transition>
 		<transition id="id67">
 			<source ref="id64"/>
 			<target ref="id62"/>
-			<label kind="guard" x="-425" y="76">cntSlotDone &lt; totalParticipants</label>
+			<label kind="guard" x="-425" y="76">cntDecisionDone &lt; totalParticipants</label>
 			<label kind="comments" x="-425" y="51">While slot processes are in progress</label>
 			<nail x="-365" y="51"/>
 		</transition>
@@ -920,7 +917,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id62"/>
 			<target ref="id64"/>
 			<label kind="synchronisation" x="-425" y="-110">decisionDone?</label>
-			<label kind="assignment" x="-425" y="-93">cntSlotDone++</label>
+			<label kind="assignment" x="-425" y="-93">cntDecisionDone++</label>
 			<nail x="-374" y="-68"/>
 		</transition>
 		<transition id="id69">
@@ -959,7 +956,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<target ref="id62"/>
 			<label kind="guard" x="-705" y="0">hasHigherlayerInput()</label>
 			<label kind="synchronisation" x="-705" y="34">decisionStarted!</label>
-			<label kind="assignment" x="-705" y="51">cntSlotDone = 0</label>
+			<label kind="assignment" x="-705" y="51">cntDecisionDone = 0</label>
 		</transition>
 	</template>
 	<template>
