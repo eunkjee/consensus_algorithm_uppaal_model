@@ -148,15 +148,9 @@ broadcast chan tickManagerStart; // for TickTestApp
 
 
 
-/// ----- ** VARIABLES
-//int[0,V-1] slotCur = 0; // current slot pointer
-
-
 /// ------ ** METHODS
 bool isLessValue(const bool &amp;valueL[V], const bool &amp;valueR[V]) {
     // check if valueL &lt; valueR
-    
-    // TODO: THE COMPARISON NEEDS TO BE CHECKED. valueL and valueR arrays are no longer booleans.
 
     int[-1, V-1] i;
 
@@ -185,6 +179,16 @@ int getTotalValidators(const int[0,N] curNodeID) {
         }
     }
     return totalValidators;
+}
+
+/// !!!: temp declaration. need to be reviewed. and consider how to handle the result with faulty nodes.
+bool handlingValues[V];
+bool isDecisionDone() {
+    for (n : n_id) {
+        if (handlingValues != NOVALUE &amp;&amp; handlingValues != nominatedValues[n])
+            return false;
+    }
+    return true;
 }</declaration>
 	<template>
 		<name>TickManager</name>
@@ -373,8 +377,8 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<location id="id23" x="-442" y="-8">
 			<name x="-527" y="0">StartConsensus</name>
 		</location>
-		<location id="id24" x="-722" y="-8">
-			<name x="-732" y="-42">ReadyConsensus</name>
+		<location id="id24" x="-739" y="-8">
+			<name x="-749" y="-42">ReadyConsensus</name>
 		</location>
 		<location id="id25" x="-297" y="-8">
 			<committed/>
@@ -439,9 +443,9 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id34">
 			<source ref="id24"/>
 			<target ref="id23"/>
-			<label kind="guard" x="-705" y="0">hasHigherlayerInput()</label>
-			<label kind="synchronisation" x="-705" y="34">decisionStarted!</label>
-			<label kind="assignment" x="-705" y="51">cntDecisionDone = 0</label>
+			<label kind="guard" x="-722" y="0">hasHigherlayerInput()</label>
+			<label kind="synchronisation" x="-722" y="34">decisionStarted!</label>
+			<label kind="assignment" x="-722" y="51">cntDecisionDone = 0</label>
 		</transition>
 	</template>
 	<template>
@@ -622,6 +626,8 @@ void getMyHigherlayerInput() {
             &amp;&amp; !nominationStates[myID].accepted[v]
             &amp;&amp; !nominationStates[myID].voted[v]) {
             nominationStates[myID].voted[v] = true;
+            /// ----------- !!!
+            handlingValues[v] = true;
             return;
         }
     }
@@ -688,11 +694,11 @@ void newRound(bool hasNominatedValues) {
     }
 }
 </declaration>
-		<location id="id35" x="153" y="0">
-			<name x="17" y="-25">NominationDone</name>
+		<location id="id35" x="221" y="0">
+			<name x="85" y="-25">NominationDone</name>
 		</location>
-		<location id="id36" x="-187" y="0">
-			<name x="-161" y="-25">SthNominated</name>
+		<location id="id36" x="-119" y="0">
+			<name x="-93" y="-25">SthNominated</name>
 		</location>
 		<location id="id37" x="-501" y="0">
 			<name x="-493" y="-25">NominationStarted</name>
@@ -703,7 +709,7 @@ void newRound(bool hasNominatedValues) {
 		<location id="id39" x="-501" y="195">
 			<committed/>
 		</location>
-		<location id="id40" x="-187" y="-187">
+		<location id="id40" x="-119" y="-187">
 			<committed/>
 		</location>
 		<location id="id41" x="-348" y="0">
@@ -721,7 +727,7 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id43">
 			<source ref="id41"/>
 			<target ref="id36"/>
-			<label kind="synchronisation" x="-340" y="-25">tickAdvanceDone[myID]!</label>
+			<label kind="synchronisation" x="-331" y="-25">tickAdvanceDone[myID]!</label>
 		</transition>
 		<transition id="id44">
 			<source ref="id37"/>
@@ -732,14 +738,15 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id45">
 			<source ref="id40"/>
 			<target ref="id36"/>
-			<nail x="-102" y="-93"/>
+			<label kind="synchronisation" x="-85" y="-144">tickAdvanceDone[myID]!</label>
+			<nail x="-34" y="-93"/>
 		</transition>
 		<transition id="id46">
 			<source ref="id36"/>
 			<target ref="id40"/>
-			<label kind="synchronisation" x="-365" y="-144">tickAdvance[myID]?</label>
-			<label kind="assignment" x="-365" y="-127">newRound(true)</label>
-			<nail x="-272" y="-93"/>
+			<label kind="synchronisation" x="-297" y="-144">tickAdvance[myID]?</label>
+			<label kind="assignment" x="-297" y="-127">newRound(true)</label>
+			<nail x="-204" y="-93"/>
 		</transition>
 		<transition id="id47">
 			<source ref="id39"/>
@@ -758,17 +765,17 @@ void newRound(bool hasNominatedValues) {
 		<transition id="id49">
 			<source ref="id35"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-137" y="280">consensusTimeout?</label>
-			<label kind="assignment" x="-136" y="297">resetNominationState()</label>
-			<nail x="153" y="280"/>
+			<label kind="synchronisation" x="-69" y="280">consensusTimeout?</label>
+			<label kind="assignment" x="-68" y="297">resetNominationState()</label>
+			<nail x="221" y="280"/>
 			<nail x="-740" y="280"/>
 		</transition>
 		<transition id="id50">
 			<source ref="id35"/>
 			<target ref="id38"/>
-			<label kind="synchronisation" x="-136" y="229">consensusFail?</label>
-			<label kind="assignment" x="-136" y="246">resetNominationState()</label>
-			<nail x="153" y="229"/>
+			<label kind="synchronisation" x="-68" y="229">consensusFail?</label>
+			<label kind="assignment" x="-68" y="246">resetNominationState()</label>
+			<nail x="221" y="229"/>
 			<nail x="-739" y="229"/>
 		</transition>
 		<transition id="id51">
@@ -776,7 +783,7 @@ void newRound(bool hasNominatedValues) {
 			<target ref="id38"/>
 			<label kind="synchronisation" x="-722" y="280">consensusTimeout?</label>
 			<label kind="assignment" x="-722" y="297">resetNominationState()</label>
-			<nail x="-187" y="280"/>
+			<nail x="-119" y="280"/>
 			<nail x="-739" y="280"/>
 		</transition>
 		<transition id="id52">
@@ -792,7 +799,7 @@ void newRound(bool hasNominatedValues) {
 			<target ref="id38"/>
 			<label kind="synchronisation" x="-722" y="229">consensusFail?</label>
 			<label kind="assignment" x="-722" y="246">resetNominationState()</label>
-			<nail x="-187" y="229"/>
+			<nail x="-119" y="229"/>
 			<nail x="-739" y="229"/>
 		</transition>
 		<transition id="id54">
@@ -808,14 +815,15 @@ void newRound(bool hasNominatedValues) {
 			<target ref="id38"/>
 			<label kind="synchronisation" x="-722" y="-272">consensusSuccess?</label>
 			<label kind="assignment" x="-722" y="-255">resetNominationState()</label>
-			<nail x="153" y="-238"/>
+			<nail x="221" y="-238"/>
 			<nail x="-739" y="-238"/>
 		</transition>
 		<transition id="id56">
 			<source ref="id36"/>
 			<target ref="id35"/>
-			<label kind="synchronisation" x="-51" y="0">decisionDone!</label>
-			<label kind="assignment" x="-110" y="17">cur_nRound[myID] = INFINITY</label>
+			<label kind="guard" x="0" y="8">isDecisionDone()</label>
+			<label kind="synchronisation" x="17" y="25">decisionDone!</label>
+			<label kind="assignment" x="-42" y="51">cur_nRound[myID] = INFINITY</label>
 		</transition>
 		<transition id="id57">
 			<source ref="id38"/>
@@ -910,7 +918,6 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 			<source ref="id64"/>
 			<target ref="id62"/>
 			<label kind="guard" x="-425" y="76">cntDecisionDone &lt; totalParticipants</label>
-			<label kind="comments" x="-425" y="51">While slot processes are in progress</label>
 			<nail x="-365" y="51"/>
 		</transition>
 		<transition id="id68">
