@@ -74,8 +74,9 @@ const bool ISALLFALSE[V] = // TODO: need to be reviewed for the name
     {false};
 
 SCPQuorumSet qs[N] =
-    // represents an invalid validator as N (e.g., {0, 1, N})
+    // N is used as a sentinel value for an empty validator slot.
     // {threshold, {validators[N]}}
+    // {0, 1, 2, N, N} → validators = {0, 1, 2}
     {
         {0, {0, 1, 2, N, N}}, // 0
         {0, {0, 1, 2, N, N}}, // 1
@@ -1059,84 +1060,82 @@ bool checkAcceptedPrepare(const SCPBallot &amp;candidate) {
     int[0,N] cntVBlockTH = 0;
     int[0,N] cntQuorumTH = 0;
 
-    if (/// Phase: SCPPrepare
-        ballotStates[myID].curState == SCPConfirm
-    ) {
-        if (!(ballotStates[myID].p.value == candidate.value
-            &amp;&amp; ballotStates[myID].p.counter &lt; candidate.counter)) {
+    SCPBallotState myBallotState = ballotStates[myID];
+    SCPQuorumSet myQuorumSet = qs[myID];
+    int[0,N] validatorID;
+    SCPBallotState validatorBallotState;
+
+    if (myBallotState.curState == SCPConfirm) { /// Phase: SCPConfirm
+        if (!(myBallotState.p.value == candidate.value
+            &amp;&amp; myBallotState.p.counter &lt; candidate.counter)) {
             return false;
         }
     }
 
-    if (ballotStates[myID].pp.counter != 0
-        &amp;&amp; (ballotStates[myID].pp.counter &gt; candidate.counter
-            || (ballotStates[myID].pp.counter == candidate.counter
-                &amp;&amp; !(isLessValue(ballotStates[myID].pp.value, candidate.value))))) { // ballotStates[myID].pp.value &gt;= candidate.value
+    if (myBallotState.pp.counter != 0
+        &amp;&amp; (myBallotState.pp.counter &gt; candidate.counter
+            || (myBallotState.pp.counter == candidate.counter
+                &amp;&amp; !(isLessValue(myBallotState.pp.value, candidate.value))))) { // myBallotState.pp.value &gt;= candidate.value
         return false;
     }
 
-    if (ballotStates[myID].p.counter != 0
-        &amp;&amp; (ballotStates[myID].p.value == candidate.value
-            &amp;&amp; ballotStates[myID].p.counter &gt;= candidate.counter)) {
+    if (myBallotState.p.counter != 0
+        &amp;&amp; (myBallotState.p.value == candidate.value
+            &amp;&amp; myBallotState.p.counter &gt;= candidate.counter)) {
         return false;
     }
 
-    for (n : int[0,N-1]) {
-        // on `qsx].validators[n]`
-        if (qs[myID].validators[n] != N) {
-            if ( /// Phase: SCPPrepare
-                ballotStates[
-                    qs[myID].validators[n]
-                ].curState == SCPPrepare
-            ) {
+    for (id : int[0,N-1]) {
+        validatorID = myQuorumSet.validators[id];
+
+        if (validatorID != N) {
+            validatorBallotState = ballotStates[validatorID];
+
+            if (validatorBallotState.curState == SCPPrepare) { /// Phase: SCPPrepare
                 if (
                     ( // p
-                        ballotStates[qs[myID].validators[n]].p.counter != 0
-                        &amp;&amp; (ballotStates[qs[myID].validators[n]].p.value == candidate.value
-                            &amp;&amp; ballotStates[qs[myID].validators[n]].p.counter &gt;= candidate.counter)
-                    ) 
+                        validatorBallotState.p.counter != 0
+                        &amp;&amp; (validatorBallotState.p.value == candidate.value
+                            &amp;&amp; validatorBallotState.p.counter &gt;= candidate.counter)
+                    )
                     || ( // pp
-                        ballotStates[qs[myID].validators[n]].pp.counter != 0
-                            &amp;&amp; (ballotStates[qs[myID].validators[n]].pp.value == candidate.value
-                            &amp;&amp; ballotStates[qs[myID].validators[n]].pp.counter &gt;= candidate.counter)
+                        validatorBallotState.pp.counter != 0
+                        &amp;&amp; (validatorBallotState.pp.value == candidate.value
+                            &amp;&amp; validatorBallotState.pp.counter &gt;= candidate.counter)
                     )
                 ) {
-                    if (qs[myID].validators[n] != myID) {
+                    if (validatorID != myID) {
                         cntVBlockTH++;
                     }
                 }
             }
-            else if ( /// Phase: SCPConfirm
-                ballotStates[
-                    qs[myID].validators[n]
-                ].curState == SCPConfirm
-            ) {
+            else if (validatorBallotState.curState == SCPConfirm) { /// Phase: SCPConfirm
                 if ( // p
-                    ballotStates[qs[myID].validators[n]].p.value == candidate.value
-                    &amp;&amp; ballotStates[qs[myID].validators[n]].p.counter &gt;= candidate.counter
+                    validatorBallotState.p.value == candidate.value
+                    &amp;&amp; validatorBallotState.p.counter &gt;= candidate.counter
                 ) {
-                    if (qs[myID].validators[n] != myID) {
+                    if (validatorID != myID) {
                         cntVBlockTH++;
                     }
                 }
             }
-            else {  /// Phase: SCPExternalize
-                if (ballotStates[qs[myID].validators[n]].c.value == candidate.value) {
-                    if (qs[myID].validators[n] != myID) {
+            else { /// Phase: SCPExternalize
+                if (validatorBallotState.c.value == candidate.value) {
+                    if (validatorID != myID) {
                         cntVBlockTH++;
                     }
                 }
             }
 
-            if (cntVBlockTH &gt; getTotalValidators(myID) - qs[myID].threshold) {
+            if (cntVBlockTH &gt; getTotalValidators(myID) - myQuorumSet.threshold) {
                 return true;
             }
 
-            if (checkAcceptedPrepareQuorum(n, candidate)) {
+            if (checkAcceptedPrepareQuorum(validatorID, candidate)) {
                 cntQuorumTH++;
             }
 
-            if (cntQuorumTH &gt;= qs[myID].threshold) {
+            if (cntQuorumTH &gt;= myQuorumSet.threshold) {
                 return true;
             }
         }
