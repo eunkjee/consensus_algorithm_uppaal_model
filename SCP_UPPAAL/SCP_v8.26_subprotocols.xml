@@ -345,13 +345,17 @@ void doSuccess() {
 
 bool isAllAgreedLocal(int[0,N-1] nID) {
     bool value[V] = NOVALUE;
+    
+    int[0,N] validatorID;
 
     for (n : n_id) {
-        if (qs[nID].validators[n] != N) {
+        validatorID = qs[nID].validators[n];
+        
+        if (validatorID != N) {
             if (value == NOVALUE) {
-                value = nominatedValues[qs[nID].validators[n]];
+                value = nominatedValues[validatorID];
             } else {
-                if (nominatedValues[qs[nID].validators[n]] != value) {
+                if (nominatedValues[validatorID] != value) {
                     return false;
                 }
             }
@@ -486,36 +490,31 @@ void initNominationState() {
 void processMessageNomination(bool hasNominatedValues) {
     int[0,N] cntValues = 0; // node count
     int[0,N] cntValues_qs = 0; // node count in quorum set
+    
+    SCPQuorumSet myQuorumSet = qs[myID];
+    
+    int[0,N] validatorID;
+    int[0,N] nestedValidatorID;
 
     // blocking threshold check for accept nomination
     for (v : v_id) {
         cntValues = 0;
 
         // how many validators have accepted on `v`
-        /* 
-          For the current node
-          - qs[myID]: quorum set
-          - qs[myID].validators[n]: a validator
-          - qs[qs[myID].validators[id]].validators[qs_id]: a nested validator (validator's validator)
-        */
-
         for (id : int[0,N-1]) {
-            if (
-                qs[myID].validators[id] != N
-                &amp;&amp; qs[myID].validators[id] != myID
-                &amp;&amp; nominationStates[
-                    qs[myID].validators[id]
-                ].accepted[v]
-            ) {
-                cntValues++; // count for acceptance of my validators on `v`
+            validatorID = myQuorumSet.validators[id];
+            
+            if (validatorID != N &amp;&amp; validatorID != myID 
+                &amp;&amp; nominationStates[validatorID].accepted[v]) {
+                        
+                    cntValues++; // count for acceptance of my validators on `v`
             }
         }
 
         // 
-        if (
-            cntValues &gt; (getTotalValidators(myID) - qs[myID].threshold) // blocking threshold
-            &amp;&amp; !nominationStates[myID].accepted[v]
-        ) {
+        if (cntValues &gt; (getTotalValidators(myID) - myQuorumSet.threshold) // blocking threshold
+            &amp;&amp; !nominationStates[myID].accepted[v]) {
+                
             nominationStates[myID].accepted[v] = true;
             nominationStates[myID].voted[v] = false;
         }
@@ -526,35 +525,31 @@ void processMessageNomination(bool hasNominatedValues) {
         cntValues = 0;
 
         for (id : int[0,N-1]) {
-            if (qs[myID].validators[id] != N) { 
+            validatorID = myQuorumSet.validators[id];
+            
+            if (validatorID != N) { 
                 // check my validator's quorum slices
                 cntValues_qs = 0;
                 for (qs_id : int[0,N-1]) {
-                    if (qs[qs[myID].validators[id]].validators[qs_id] != N) {
-                        if (
-                            nominationStates[
-                                qs[qs[myID].validators[id]].validators[qs_id]
-                            ].accepted[v]
-                        ) {
+                    nestedValidatorID = qs[validatorID].validators[qs_id];
+                    
+                    if (nestedValidatorID != N) {
+                        if (nominationStates[nestedValidatorID].accepted[v]) {
                             cntValues_qs++;
                         }
-                        else if (
-                            nominationStates[
-                                qs[qs[myID].validators[id]].validators[qs_id]
-                            ].voted[v]
-                        ) {
+                        else if (nominationStates[nestedValidatorID].voted[v]) {
                             cntValues_qs++;
                         }
                     }
                 }
-
-                if (cntValues_qs &gt;= qs[qs[myID].validators[id]].threshold) {
+                
+                if (cntValues_qs &gt;= qs[validatorID].threshold) {
                     cntValues++;
                 }
             }
         }
 
-        if (cntValues &gt;= qs[myID].threshold
+        if (cntValues &gt;= myQuorumSet.threshold
             &amp;&amp; !nominationStates[myID].accepted[v]) {
             nominationStates[myID].accepted[v] = true;
             nominationStates[myID].voted[v] = false;
@@ -565,30 +560,29 @@ void processMessageNomination(bool hasNominatedValues) {
     for (v : v_id) {
         cntValues = 0;
 
-        for (id : int[0,N-1]) {
-            if (qs[myID].validators[id] != N) {
+        for (id : int[0,N-1]) {            
+            validatorID = myQuorumSet.validators[id];
+            
+            if (validatorID != N) {
                 cntValues_qs = 0;
 
                 // check my validator's quorum slices
                 for (qs_id : int[0,N-1]) {
-                    if (qs[qs[myID].validators[id]].validators[qs_id] != N) {
-                        if (
-                            nominationStates[
-                                qs[qs[myID].validators[id]].validators[qs_id]
-                            ].accepted[v]
-                        ) {
+                    nestedValidatorID = qs[validatorID].validators[qs_id];
+                    
+                    if (nestedValidatorID != N 
+                        &amp;&amp; nominationStates[nestedValidatorID].accepted[v]) {
                             cntValues_qs++;
-                        }
                     }
                 }
 
-                if (cntValues_qs &gt;= qs[qs[myID].validators[id]].threshold) {
+                if (cntValues_qs &gt;= qs[validatorID].threshold) {
                     cntValues++;
                 }
             }
         }
 
-        if (cntValues &gt;= qs[myID].threshold) {
+        if (cntValues &gt;= myQuorumSet.threshold) {
             if (!nominationStates[myID].accepted[v]) {
                 nominationStates[myID].accepted[v] = true;
                 nominationStates[myID].voted[v] = false;
