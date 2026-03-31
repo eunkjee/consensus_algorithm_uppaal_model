@@ -132,7 +132,6 @@ chan nominationDone[N];
 
 chan decisionDone;
 
-chan tickAdvanceBallot[N];
 chan tickAdvance[N];
 chan tickAdvanceDone[N];
 
@@ -838,9 +837,9 @@ void newRound(bool hasNominatedValues) {
 
 int[0,N] cntDecisionDone = 0;
 
-bool hasHigherlayerInput() {
+bool hasNominatedValues() {
     for (id : int[0,N-1]) {
-        if (higherlayerInput[id] != NOVALUE) {
+        if (nominatedValues[id] != NOVALUE) {
             return true;
         }
     }
@@ -904,8 +903,7 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		<transition id="id65">
 			<source ref="id64"/>
 			<target ref="id61"/>
-			<label kind="guard" x="-289" y="-161">forall (i : n_id) nominatedValues[i] != NOVALUE
-&amp;&amp; forall (i : n_id) ballotStates[i].c.value != NOVALUE</label>
+			<label kind="guard" x="-289" y="-119">forall (i : n_id) ballotStates[i].c.value != NOVALUE</label>
 			<nail x="-297" y="-93"/>
 			<nail x="-161" y="-93"/>
 		</transition>
@@ -936,32 +934,22 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
 		</transition>
 		<transition id="id70">
 			<source ref="id62"/>
-			<target ref="id58"/>
-			<label kind="guard" x="-425" y="178">exists (i : n_id) cur_nRound[i] == BOUNDARY
-&amp;&amp; forall (i : n_id) nominationStates[i].accepted == ISALLFALSE</label>
-			<label kind="synchronisation" x="-425" y="212">consensusFail!</label>
-			<nail x="-442" y="170"/>
-		</transition>
-		<transition id="id71">
-			<source ref="id62"/>
 			<target ref="id59"/>
-			<label kind="guard" x="-425" y="-365">(exists (i : n_id) cur_nRound[i] == BOUNDARY
-|| exists (i : n_id) cur_b_cnt[i] == BOUNDARY)
-&amp;&amp; exists (i : n_id) nominationStates[i].accepted != ISALLFALSE</label>
+			<label kind="guard" x="-425" y="-331">exists (i : n_id) cur_b_cnt[i] == BOUNDARY</label>
 			<label kind="synchronisation" x="-425" y="-306">consensusTimeout!</label>
 			<nail x="-442" y="-272"/>
 		</transition>
-		<transition id="id72">
+		<transition id="id71">
 			<source ref="id61"/>
 			<target ref="id60"/>
 			<label kind="guard" x="-85" y="0">forall (i : n_id) isAllAgreedLocal(i)</label>
 			<label kind="synchronisation" x="-85" y="17">consensusSuccess!</label>
 			<label kind="assignment" x="-85" y="34">doSuccess()</label>
 		</transition>
-		<transition id="id73">
+		<transition id="id72">
 			<source ref="id63"/>
 			<target ref="id62"/>
-			<label kind="guard" x="-705" y="0">hasHigherlayerInput()</label>
+			<label kind="guard" x="-705" y="0">hasNominatedValues()</label>
 			<label kind="synchronisation" x="-705" y="34">decisionStarted!</label>
 			<label kind="assignment" x="-705" y="51">cntDecisionDone = 0</label>
 		</transition>
@@ -2257,180 +2245,172 @@ void newBCounter() {
         tickBallot[myID]++;
     }
 }</declaration>
-		<location id="id74" x="263" y="-17">
+		<location id="id73" x="263" y="-17">
 			<name x="170" y="-17">Externalize</name>
 		</location>
-		<location id="id75" x="-102" y="-17">
+		<location id="id74" x="-102" y="-17">
 			<name x="-178" y="-17">Confirm</name>
 		</location>
-		<location id="id76" x="-484" y="-17">
+		<location id="id75" x="-484" y="-17">
 			<name x="-561" y="-8">Prepare</name>
 		</location>
-		<location id="id77" x="-705" y="-17">
+		<location id="id76" x="-705" y="-17">
 			<name x="-688" y="-42">StartBallot</name>
 		</location>
-		<location id="id78" x="263" y="136">
+		<location id="id77" x="263" y="136">
 			<committed/>
 		</location>
-		<location id="id79" x="-595" y="-17">
+		<location id="id78" x="-595" y="-17">
 			<committed/>
 		</location>
-		<location id="id80" x="-229" y="-17">
+		<location id="id79" x="144" y="-17">
 			<committed/>
 		</location>
-		<location id="id81" x="144" y="-17">
+		<location id="id80" x="-484" y="136">
 			<committed/>
 		</location>
-		<location id="id82" x="-484" y="136">
+		<location id="id81" x="-102" y="136">
 			<committed/>
 		</location>
-		<location id="id83" x="-102" y="136">
+		<location id="id82" x="-357" y="-17">
 			<committed/>
 		</location>
-		<location id="id84" x="-357" y="-17">
+		<location id="id83" x="17" y="-17">
 			<committed/>
 		</location>
-		<location id="id85" x="17" y="-17">
-			<committed/>
-		</location>
-		<init ref="id77"/>
-		<transition id="id86">
-			<source ref="id85"/>
-			<target ref="id81"/>
+		<init ref="id76"/>
+		<transition id="id84">
+			<source ref="id83"/>
+			<target ref="id79"/>
 			<label kind="synchronisation" x="-51" y="-8">tickAdvanceDone[myID]!</label>
 			<label kind="assignment" x="-51" y="8">ballotDone[myID] = true, cur_b_cnt[myID] = INFINITY</label>
 		</transition>
-		<transition id="id87">
-			<source ref="id75"/>
-			<target ref="id85"/>
+		<transition id="id85">
+			<source ref="id74"/>
+			<target ref="id83"/>
 			<label kind="guard" x="-93" y="-85">ballotStates[myID].curState == SCPExternalize</label>
 			<label kind="synchronisation" x="-93" y="-68">tickAdvance[myID]?</label>
 		</transition>
-		<transition id="id88">
-			<source ref="id84"/>
-			<target ref="id80"/>
+		<transition id="id86">
+			<source ref="id82"/>
+			<target ref="id74"/>
 			<label kind="synchronisation" x="-391" y="0">tickAdvanceDone[myID]!</label>
 			<label kind="assignment" x="-391" y="17">cur_nRound[myID] = INFINITY</label>
 		</transition>
-		<transition id="id89">
-			<source ref="id76"/>
-			<target ref="id84"/>
+		<transition id="id87">
+			<source ref="id75"/>
+			<target ref="id82"/>
 			<label kind="guard" x="-476" y="-85">ballotStates[myID].curState == SCPConfirm</label>
-			<label kind="synchronisation" x="-476" y="-68">tickAdvanceBallot[myID]?</label>
+			<label kind="synchronisation" x="-476" y="-68">tickAdvance[myID]?</label>
 		</transition>
-		<transition id="id90">
-			<source ref="id83"/>
-			<target ref="id75"/>
+		<transition id="id88">
+			<source ref="id81"/>
+			<target ref="id74"/>
 			<label kind="synchronisation" x="-110" y="102">tickAdvanceDone[myID]!</label>
 			<nail x="-25" y="59"/>
 		</transition>
-		<transition id="id91">
-			<source ref="id75"/>
-			<target ref="id83"/>
+		<transition id="id89">
+			<source ref="id74"/>
+			<target ref="id81"/>
 			<label kind="guard" x="-365" y="34">ballotStates[myID].curState == SCPConfirm</label>
 			<label kind="synchronisation" x="-365" y="51">tickAdvance[myID]?</label>
 			<label kind="assignment" x="-365" y="68">newBCounter()</label>
 			<nail x="-178" y="59"/>
 		</transition>
-		<transition id="id92">
-			<source ref="id82"/>
-			<target ref="id76"/>
+		<transition id="id90">
+			<source ref="id80"/>
+			<target ref="id75"/>
 			<label kind="synchronisation" x="-493" y="102">tickAdvanceDone[myID]!</label>
 			<nail x="-408" y="59"/>
 		</transition>
-		<transition id="id93">
-			<source ref="id76"/>
-			<target ref="id82"/>
-			<label kind="guard" x="-722" y="34">ballotStates[myID].curState == SCPPrepare</label>
-			<label kind="synchronisation" x="-722" y="51">tickAdvanceBallot[myID]?</label>
-			<label kind="assignment" x="-722" y="68">newBCounter()</label>
+		<transition id="id91">
+			<source ref="id75"/>
+			<target ref="id80"/>
+			<label kind="guard" x="-782" y="51">ballotStates[myID].curState == SCPPrepare</label>
+			<label kind="synchronisation" x="-697" y="68">tickAdvance[myID]?</label>
+			<label kind="assignment" x="-697" y="85">newBCounter()</label>
 			<nail x="-561" y="59"/>
 		</transition>
-		<transition id="id94">
-			<source ref="id81"/>
-			<target ref="id74"/>
+		<transition id="id92">
+			<source ref="id79"/>
+			<target ref="id73"/>
 			<label kind="synchronisation" x="161" y="-34">decisionDone!</label>
 		</transition>
-		<transition id="id95">
-			<source ref="id80"/>
-			<target ref="id75"/>
-			<label kind="synchronisation" x="-289" y="-51">nominationDone[myID]!</label>
-		</transition>
-		<transition id="id96">
-			<source ref="id79"/>
-			<target ref="id76"/>
-			<label kind="synchronisation" x="-680" y="-59">tickAdvanceDone[myID]!</label>
-		</transition>
-		<transition id="id97">
-			<source ref="id77"/>
-			<target ref="id79"/>
-			<label kind="synchronisation" x="-765" y="0">sthNominated[myID]?</label>
-			<label kind="assignment" x="-765" y="17">initBallotState()</label>
-		</transition>
-		<transition id="id98">
+		<transition id="id93">
 			<source ref="id78"/>
-			<target ref="id74"/>
+			<target ref="id75"/>
+			<label kind="synchronisation" x="-663" y="-59">tickAdvanceDone[myID]!</label>
+		</transition>
+		<transition id="id94">
+			<source ref="id76"/>
+			<target ref="id78"/>
+			<label kind="synchronisation" x="-765" y="-8">tickAdvance[myID]?</label>
+			<label kind="assignment" x="-765" y="8">initBallotState()</label>
+		</transition>
+		<transition id="id95">
+			<source ref="id77"/>
+			<target ref="id73"/>
 			<label kind="synchronisation" x="161" y="102">tickAdvanceDone[myID]!</label>
 			<nail x="340" y="59"/>
 		</transition>
-		<transition id="id99">
-			<source ref="id74"/>
-			<target ref="id78"/>
+		<transition id="id96">
+			<source ref="id73"/>
+			<target ref="id77"/>
 			<label kind="guard" x="0" y="34">ballotStates[myID].curState == SCPExternalize</label>
 			<label kind="synchronisation" x="0" y="51">tickAdvance[myID]?</label>
 			<nail x="187" y="59"/>
 		</transition>
-		<transition id="id100">
-			<source ref="id74"/>
-			<target ref="id77"/>
+		<transition id="id97">
+			<source ref="id73"/>
+			<target ref="id76"/>
 			<label kind="synchronisation" x="-76" y="-195">consensusTimeout?</label>
 			<label kind="assignment" x="-76" y="-178">resetBallotState()</label>
 			<nail x="263" y="-161"/>
 			<nail x="-705" y="-161"/>
 		</transition>
-		<transition id="id101">
-			<source ref="id74"/>
-			<target ref="id77"/>
+		<transition id="id98">
+			<source ref="id73"/>
+			<target ref="id76"/>
 			<label kind="synchronisation" x="-76" y="-127">consensusFail?</label>
 			<label kind="assignment" x="-76" y="-110">resetBallotState()</label>
 			<nail x="263" y="-93"/>
 			<nail x="-706" y="-93"/>
 		</transition>
-		<transition id="id102">
-			<source ref="id75"/>
-			<target ref="id77"/>
+		<transition id="id99">
+			<source ref="id74"/>
+			<target ref="id76"/>
 			<label kind="synchronisation" x="-459" y="-195">consensusTimeout?</label>
 			<label kind="assignment" x="-459" y="-178">resetBallotState()</label>
 			<nail x="-102" y="-161"/>
 			<nail x="-705" y="-161"/>
 		</transition>
-		<transition id="id103">
-			<source ref="id75"/>
-			<target ref="id77"/>
+		<transition id="id100">
+			<source ref="id74"/>
+			<target ref="id76"/>
 			<label kind="synchronisation" x="-459" y="-127">consensusFail?</label>
 			<label kind="assignment" x="-459" y="-110">resetBallotState()</label>
 			<nail x="-102" y="-93"/>
 			<nail x="-705" y="-93"/>
 		</transition>
-		<transition id="id104">
-			<source ref="id76"/>
-			<target ref="id77"/>
+		<transition id="id101">
+			<source ref="id75"/>
+			<target ref="id76"/>
 			<label kind="synchronisation" x="-688" y="-195">consensusTimeout?</label>
 			<label kind="assignment" x="-688" y="-178">resetBallotState()</label>
 			<nail x="-484" y="-161"/>
 			<nail x="-705" y="-161"/>
 		</transition>
-		<transition id="id105">
-			<source ref="id76"/>
-			<target ref="id77"/>
+		<transition id="id102">
+			<source ref="id75"/>
+			<target ref="id76"/>
 			<label kind="synchronisation" x="-688" y="-127">consensusFail?</label>
 			<label kind="assignment" x="-688" y="-110">resetBallotState()</label>
 			<nail x="-484" y="-93"/>
 			<nail x="-705" y="-93"/>
 		</transition>
-		<transition id="id106">
-			<source ref="id74"/>
-			<target ref="id77"/>
+		<transition id="id103">
+			<source ref="id73"/>
+			<target ref="id76"/>
 			<label kind="synchronisation" x="-688" y="-263">consensusSuccess?</label>
 			<label kind="assignment" x="-688" y="-246">resetBallotState()</label>
 			<nail x="263" y="-229"/>
@@ -2440,21 +2420,21 @@ void newBCounter() {
 	<template>
 		<name>SilentNode</name>
 		<parameter>const f_id nodeID</parameter>
-		<location id="id107" x="0" y="0">
+		<location id="id104" x="0" y="0">
 		</location>
-		<location id="id108" x="102" y="0">
+		<location id="id105" x="102" y="0">
 			<committed/>
 		</location>
-		<init ref="id107"/>
-		<transition id="id109">
-			<source ref="id108"/>
-			<target ref="id107"/>
+		<init ref="id104"/>
+		<transition id="id106">
+			<source ref="id105"/>
+			<target ref="id104"/>
 			<label kind="synchronisation" x="-34" y="-59">tickAdvanceDone[nodeID]!</label>
 			<nail x="51" y="-25"/>
 		</transition>
-		<transition id="id110">
-			<source ref="id107"/>
-			<target ref="id108"/>
+		<transition id="id107">
+			<source ref="id104"/>
+			<target ref="id105"/>
 			<label kind="synchronisation" x="-17" y="42">tickAdvance[nodeID]?</label>
 			<nail x="51" y="25"/>
 		</transition>
@@ -2469,205 +2449,205 @@ void newBCounter() {
     1. if all nodes nominated `valueID` -&gt; goes to `CheckNominationSuccess`
     2. if all nodes somehow nominated `valueID`, but they are not same value -&gt; goes back to StartCheckNomination
 */</declaration>
-		<location id="id111" x="-25" y="-170">
+		<location id="id108" x="-25" y="-170">
 			<name x="-221" y="-178">CheckNominationSuccess</name>
 		</location>
-		<location id="id112" x="-25" y="-25">
+		<location id="id109" x="-25" y="-25">
 			<name x="-212" y="-59">CheckNominationStarted</name>
 		</location>
-		<location id="id113" x="-416" y="-25">
+		<location id="id110" x="-416" y="-25">
 			<name x="-416" y="-59">StartCheckNomination</name>
 		</location>
-		<init ref="id113"/>
-		<transition id="id114">
-			<source ref="id112"/>
-			<target ref="id113"/>
+		<init ref="id110"/>
+		<transition id="id111">
+			<source ref="id109"/>
+			<target ref="id110"/>
 			<label kind="guard" x="-399" y="93">exists (i : n_id) nominatedValues[i][valueID]
 &amp;&amp; !(forall (i : n_id) nominatedValues[i][valueID])</label>
 			<label kind="synchronisation" x="-399" y="76">decisionDone?</label>
 			<nail x="-25" y="68"/>
 			<nail x="-416" y="68"/>
 		</transition>
-		<transition id="id115">
-			<source ref="id112"/>
-			<target ref="id111"/>
+		<transition id="id112">
+			<source ref="id109"/>
+			<target ref="id108"/>
 			<label kind="guard" x="-221" y="-127">forall (i : n_id) nominatedValues[i][valueID]</label>
 			<label kind="synchronisation" x="-221" y="-144">decisionDone?</label>
 		</transition>
-		<transition id="id116">
-			<source ref="id113"/>
-			<target ref="id112"/>
+		<transition id="id113">
+			<source ref="id110"/>
+			<target ref="id109"/>
 			<label kind="synchronisation" x="-306" y="-17">decisionStarted?</label>
 		</transition>
 	</template>
 	<template>
 		<name>TickTestApp</name>
-		<location id="id117" x="-416" y="-8">
+		<location id="id114" x="-416" y="-8">
 			<committed/>
 		</location>
-		<location id="id118" x="-230" y="-8">
+		<location id="id115" x="-230" y="-8">
 		</location>
-		<location id="id119" x="-68" y="-8">
+		<location id="id116" x="-68" y="-8">
 		</location>
-		<location id="id120" x="-68" y="-127">
+		<location id="id117" x="-68" y="-127">
 		</location>
-		<location id="id121" x="-68" y="102">
+		<location id="id118" x="-68" y="102">
 		</location>
-		<location id="id122" x="76" y="-187">
+		<location id="id119" x="76" y="-187">
 		</location>
-		<location id="id123" x="76" y="-93">
+		<location id="id120" x="76" y="-93">
 		</location>
-		<location id="id124" x="76" y="-51">
+		<location id="id121" x="76" y="-51">
 		</location>
-		<location id="id125" x="76" y="42">
+		<location id="id122" x="76" y="42">
 		</location>
-		<location id="id126" x="76" y="85">
+		<location id="id123" x="76" y="85">
 		</location>
-		<location id="id127" x="76" y="178">
+		<location id="id124" x="76" y="178">
 		</location>
-		<location id="id128" x="204" y="-187">
+		<location id="id125" x="204" y="-187">
 			<committed/>
 		</location>
-		<location id="id129" x="204" y="-93">
+		<location id="id126" x="204" y="-93">
 			<committed/>
 		</location>
-		<location id="id130" x="204" y="-51">
+		<location id="id127" x="204" y="-51">
 			<committed/>
 		</location>
-		<location id="id131" x="204" y="42">
+		<location id="id128" x="204" y="42">
 			<committed/>
 		</location>
-		<location id="id132" x="204" y="85">
+		<location id="id129" x="204" y="85">
 			<committed/>
 		</location>
-		<location id="id133" x="204" y="178">
+		<location id="id130" x="204" y="178">
 			<committed/>
 		</location>
-		<init ref="id117"/>
-		<transition id="id134">
-			<source ref="id131"/>
-			<target ref="id118"/>
+		<init ref="id114"/>
+		<transition id="id131">
+			<source ref="id128"/>
+			<target ref="id115"/>
 			<nail x="263" y="42"/>
 			<nail x="263" y="238"/>
 			<nail x="-229" y="238"/>
 		</transition>
-		<transition id="id135">
-			<source ref="id132"/>
-			<target ref="id118"/>
+		<transition id="id132">
+			<source ref="id129"/>
+			<target ref="id115"/>
 			<nail x="263" y="85"/>
 			<nail x="263" y="238"/>
 			<nail x="-229" y="238"/>
 		</transition>
-		<transition id="id136">
-			<source ref="id133"/>
-			<target ref="id118"/>
+		<transition id="id133">
+			<source ref="id130"/>
+			<target ref="id115"/>
 			<nail x="204" y="238"/>
 			<nail x="-229" y="238"/>
 		</transition>
-		<transition id="id137">
-			<source ref="id130"/>
-			<target ref="id118"/>
+		<transition id="id134">
+			<source ref="id127"/>
+			<target ref="id115"/>
 			<nail x="263" y="-51"/>
 			<nail x="263" y="-263"/>
 			<nail x="-229" y="-263"/>
 		</transition>
-		<transition id="id138">
-			<source ref="id129"/>
-			<target ref="id118"/>
+		<transition id="id135">
+			<source ref="id126"/>
+			<target ref="id115"/>
 			<nail x="263" y="-93"/>
 			<nail x="263" y="-263"/>
 			<nail x="-229" y="-263"/>
 		</transition>
-		<transition id="id139">
-			<source ref="id128"/>
-			<target ref="id118"/>
+		<transition id="id136">
+			<source ref="id125"/>
+			<target ref="id115"/>
 			<nail x="204" y="-263"/>
 			<nail x="-229" y="-263"/>
 		</transition>
-		<transition id="id140">
-			<source ref="id127"/>
-			<target ref="id133"/>
-			<label kind="synchronisation" x="94" y="161">tickAdvance[0]?</label>
-		</transition>
-		<transition id="id141">
-			<source ref="id126"/>
-			<target ref="id132"/>
-			<label kind="synchronisation" x="94" y="68">tickAdvance[1]?</label>
-		</transition>
-		<transition id="id142">
-			<source ref="id125"/>
-			<target ref="id131"/>
-			<label kind="synchronisation" x="94" y="25">tickAdvance[0]?</label>
-		</transition>
-		<transition id="id143">
+		<transition id="id137">
 			<source ref="id124"/>
 			<target ref="id130"/>
-			<label kind="synchronisation" x="94" y="-68">tickAdvance[2]?</label>
+			<label kind="synchronisation" x="94" y="161">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id144">
+		<transition id="id138">
 			<source ref="id123"/>
 			<target ref="id129"/>
-			<label kind="synchronisation" x="94" y="-110">tickAdvance[1]?</label>
+			<label kind="synchronisation" x="94" y="68">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id145">
+		<transition id="id139">
 			<source ref="id122"/>
 			<target ref="id128"/>
-			<label kind="synchronisation" x="94" y="-204">tickAdvance[2]?</label>
+			<label kind="synchronisation" x="94" y="25">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id146">
+		<transition id="id140">
 			<source ref="id121"/>
 			<target ref="id127"/>
-			<label kind="synchronisation" x="-50" y="123">tickAdvance[1]?</label>
+			<label kind="synchronisation" x="94" y="-68">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id147">
-			<source ref="id121"/>
+		<transition id="id141">
+			<source ref="id120"/>
 			<target ref="id126"/>
-			<label kind="synchronisation" x="-50" y="76">tickAdvance[0]?</label>
+			<label kind="synchronisation" x="94" y="-110">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id148">
+		<transition id="id142">
 			<source ref="id119"/>
 			<target ref="id125"/>
+			<label kind="synchronisation" x="94" y="-204">tickAdvance[2]?</label>
+		</transition>
+		<transition id="id143">
+			<source ref="id118"/>
+			<target ref="id124"/>
+			<label kind="synchronisation" x="-50" y="123">tickAdvance[1]?</label>
+		</transition>
+		<transition id="id144">
+			<source ref="id118"/>
+			<target ref="id123"/>
+			<label kind="synchronisation" x="-50" y="76">tickAdvance[0]?</label>
+		</transition>
+		<transition id="id145">
+			<source ref="id116"/>
+			<target ref="id122"/>
 			<label kind="synchronisation" x="-50" y="0">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id149">
-			<source ref="id119"/>
-			<target ref="id124"/>
+		<transition id="id146">
+			<source ref="id116"/>
+			<target ref="id121"/>
 			<label kind="synchronisation" x="-50" y="-46">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id150">
-			<source ref="id120"/>
-			<target ref="id123"/>
+		<transition id="id147">
+			<source ref="id117"/>
+			<target ref="id120"/>
 			<label kind="synchronisation" x="-50" y="-127">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id151">
-			<source ref="id120"/>
-			<target ref="id122"/>
+		<transition id="id148">
+			<source ref="id117"/>
+			<target ref="id119"/>
 			<label kind="synchronisation" x="-50" y="-174">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id152">
-			<source ref="id118"/>
-			<target ref="id121"/>
+		<transition id="id149">
+			<source ref="id115"/>
+			<target ref="id118"/>
 			<label kind="synchronisation" x="-212" y="30">tickAdvance[2]?</label>
 		</transition>
-		<transition id="id153">
-			<source ref="id118"/>
-			<target ref="id119"/>
+		<transition id="id150">
+			<source ref="id115"/>
+			<target ref="id116"/>
 			<label kind="synchronisation" x="-212" y="-25">tickAdvance[1]?</label>
 		</transition>
-		<transition id="id154">
-			<source ref="id118"/>
-			<target ref="id120"/>
+		<transition id="id151">
+			<source ref="id115"/>
+			<target ref="id117"/>
 			<label kind="synchronisation" x="-212" y="-84">tickAdvance[0]?</label>
 		</transition>
-		<transition id="id155">
-			<source ref="id117"/>
-			<target ref="id118"/>
+		<transition id="id152">
+			<source ref="id114"/>
+			<target ref="id115"/>
 			<label kind="synchronisation" x="-398" y="-25">tickManagerStart!</label>
 		</transition>
 	</template>
 	<system>// ** Basic simulation
-system NConsensusChecker, NodeNomination, TickManager, TickWorker;
-//system BConsensusChecker, NodeBallot, TickManager, TickWorker;
+//system NConsensusChecker, NodeNomination, TickManager, TickWorker;
+system BConsensusChecker, NodeBallot, TickManager, TickWorker;
 
 // ** Silent Fault simulation
 //system NodeSlot, NodeNomination, NodeBallot, SilentNode, TickManager, TickWorker;
