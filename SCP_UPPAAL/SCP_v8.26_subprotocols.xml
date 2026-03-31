@@ -350,9 +350,9 @@ bool isAllAgreedLocal(int[0,N-1] nID) {
     for (n : n_id) {
         if (qs[nID].validators[n] != N) {
             if (value == NOVALUE) {
-                value = ballotStates[qs[nID].validators[n]].c.value;
+                value = nominatedValues[qs[nID].validators[n]];
             } else {
-                if (ballotStates[qs[nID].validators[n]].c.value != value) {
+                if (nominatedValues[qs[nID].validators[n]] != value) {
                     return false;
                 }
             }
