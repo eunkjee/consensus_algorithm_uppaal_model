@@ -1335,38 +1335,42 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
     bool hasNewConfirmedPrepare = false;
     SCPBallot tempBallot;
 
-    for (n : int[0,N-1]) {
-        if (qs[myID].validators[n] != N) {
+    SCPQuorumSet myQuorumSet = qs[myID];
+    SCPBallotState myBallotState = ballotStates[myID];
+    int[0,N] validatorID;
+    SCPBallotState validatorBallotState;
+
+    for (id : int[0,N-1]) {
+        validatorID = myQuorumSet.validators[id];
+
+        if (validatorID != N) {
             isAgreed = false;
             tempBallot.counter = 0;
             tempBallot.value = NOVALUE;
-            if ( /// Phase: SCPPrepare
-                ballotStates[
-                    qs[myID].validators[n]
-                ].curState == SCPPrepare
-            ) {
+            validatorBallotState = ballotStates[validatorID];
+
+            if (validatorBallotState.curState == SCPPrepare) { /// Phase: SCPPrepare
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
                         if ( // p
-                            ballotStates[qs[myID].validators[n]].p.counter != 0
-                             &amp;&amp; (ballotStates[qs[myID].validators[n]].p.value == newMessageBallots[j].value
-                             &amp;&amp; ballotStates[qs[myID].validators[n]].p.counter &lt;= newMessageBallots[j].counter)
+                            validatorBallotState.p.counter != 0
+                            &amp;&amp; (validatorBallotState.p.value == newMessageBallots[j].value
+                                &amp;&amp; validatorBallotState.p.counter &lt;= newMessageBallots[j].counter)
                         ) {
-
-                            isAgreed = checkConfirmedPrepare(ballotStates[qs[myID].validators[n]].p);
+                            isAgreed = checkConfirmedPrepare(validatorBallotState.p);
                             if (isAgreed) {
-                                tempBallot.counter = ballotStates[qs[myID].validators[n]].p.counter;
-                                tempBallot.value = ballotStates[qs[myID].validators[n]].p.value;
+                                tempBallot.counter = validatorBallotState.p.counter;
+                                tempBallot.value = validatorBallotState.p.value;
                             } else {
                                 if ( // pp
-                                    ballotStates[qs[myID].validators[n]].pp.counter != 0 
-                                    &amp;&amp; (ballotStates[qs[myID].validators[n]].pp.value == newMessageBallots[j].value 
-                                        &amp;&amp; ballotStates[qs[myID].validators[n]].pp.counter &lt;= newMessageBallots[j].counter)) {
+                                    validatorBallotState.pp.counter != 0
+                                    &amp;&amp; (validatorBallotState.pp.value == newMessageBallots[j].value
+                                        &amp;&amp; validatorBallotState.pp.counter &lt;= newMessageBallots[j].counter)) {
 
-                                    isAgreed = checkConfirmedPrepare(ballotStates[qs[myID].validators[n]].pp);
+                                    isAgreed = checkConfirmedPrepare(validatorBallotState.pp);
                                     if (isAgreed) {
-                                        tempBallot.counter = ballotStates[qs[myID].validators[n]].pp.counter;
-                                        tempBallot.value = ballotStates[qs[myID].validators[n]].pp.value;
+                                        tempBallot.counter = validatorBallotState.pp.counter;
+                                        tempBallot.value = validatorBallotState.pp.value;
                                     }
                                 }
                             }
@@ -1374,16 +1378,11 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
                     }
                 }
             }
-            else if ( /// Phase: SCPConfirm
-                ballotStates[
-                    qs[myID].validators[n]
-                ].curState == SCPConfirm
-            ) {
+            else if (validatorBallotState.curState == SCPConfirm) { /// Phase: SCPConfirm
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
-                        if (ballotStates[qs[myID].validators[n]].p.counter &lt; newMessageBallots[j].counter) {
-
-                            tempBallot.counter = ballotStates[qs[myID].validators[n]].p.counter;
+                        if (validatorBallotState.p.counter &lt; newMessageBallots[j].counter) {
+                            tempBallot.counter = validatorBallotState.p.counter;
                             tempBallot.value = newMessageBallots[j].value;
                             isAgreed = checkConfirmedPrepare(tempBallot);
                         }
@@ -1393,8 +1392,7 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
             else { /// Phase: SCPExternalize
                 for (j : int[0,2]) {
                     if (!isAgreed &amp;&amp; newMessageBallots[j].counter != 0) {
-                        if (ballotStates[qs[myID].validators[n]].c.value == newMessageBallots[j].value) {
-                            
+                        if (validatorBallotState.c.value == newMessageBallots[j].value) {
                             isAgreed = checkConfirmedPrepare(newMessageBallots[j]);
                             if (isAgreed) {
                                 tempBallot.counter = newMessageBallots[j].counter;
@@ -1406,11 +1404,11 @@ bool attemptConfirmPrepare(SCPBallot &amp;confirmedHBallot, SCPBallot &amp;newMe
             }
 
             if (isAgreed) {
-                if (ballotStates[myID].h.counter == 0
-                    || (ballotStates[myID].h.counter &lt; tempBallot.counter
-                        || (ballotStates[myID].h.counter == tempBallot.counter
-                            &amp;&amp; isLessValue(ballotStates[myID].h.value, tempBallot.value)))) { // ballotStates[myID].h.value &lt; tempBallot.value
-                                
+                if (myBallotState.h.counter == 0
+                    || (myBallotState.h.counter &lt; tempBallot.counter
+                        || (myBallotState.h.counter == tempBallot.counter
+                            &amp;&amp; isLessValue(myBallotState.h.value, tempBallot.value)))) { // myBallotState.h.value &lt; tempBallot.value
+
                     hasNewConfirmedPrepare = true;
                     if (confirmedHBallot.counter == 0) {
                         confirmedHBallot.counter = tempBallot.counter;
