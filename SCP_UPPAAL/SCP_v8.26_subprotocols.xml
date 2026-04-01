@@ -1615,41 +1615,39 @@ bool attemptAcceptCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &a
     return isAgreed;
 }
 
-bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
+bool checkConfirmedCommitQuorum(int[0,N] nodeID, const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntQuorumTH = 0;
 
-    for (n : int[0,N-1]) {
-        if (N - n + cntQuorumTH &lt; qs[nodeIndex].threshold) {
+    SCPQuorumSet nodeQuorumSet = qs[nodeID];
+    int[0,N] validatorID;
+    SCPBallotState validatorBallotState;
+
+    for (id : int[0,N-1]) {
+        if (N - id + cntQuorumTH &lt; nodeQuorumSet.threshold) {
             return false;
         }
 
-        if (qs[nodeIndex].validators[n] != N) {
-            if ( /// Phase: SCPPrepare
-                ballotStates[
-                    qs[nodeIndex].validators[n]
-                ].curState == SCPPrepare
-            ) {
-                // do nothing
-            } else if ( /// Phase: SCPConfirm
-                ballotStates[
-                    qs[nodeIndex].validators[n]
-                ].curState == SCPConfirm
-            ) {
+        validatorID = nodeQuorumSet.validators[id];
 
-                if (ballotStates[qs[nodeIndex].validators[n]].b.value == ballotValue
-                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].c.counter &lt;= counterC
-                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].h.counter &gt;= counterH) {
+        if (validatorID != N) {
+            validatorBallotState = ballotStates[validatorID];
+
+            if (validatorBallotState.curState == SCPPrepare) { /// Phase: SCPPrepare
+                // do nothing
+            } else if (validatorBallotState.curState == SCPConfirm) { /// Phase: SCPConfirm
+                if (validatorBallotState.b.value == ballotValue
+                    &amp;&amp; validatorBallotState.c.counter &lt;= counterC
+                    &amp;&amp; validatorBallotState.h.counter &gt;= counterH) {
                     cntQuorumTH++;
                 }
             } else { /// Phase: SCPExternalize
-
-                if (ballotStates[qs[nodeIndex].validators[n]].c.value == ballotValue
-                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].c.counter &lt;= counterC) {
+                if (validatorBallotState.c.value == ballotValue
+                    &amp;&amp; validatorBallotState.c.counter &lt;= counterC) {
                     cntQuorumTH++;
                 }
             }
 
-            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
+            if (cntQuorumTH &gt;= nodeQuorumSet.threshold) {
                 return true;
             }
         }
@@ -1661,17 +1659,22 @@ bool checkConfirmedCommitQuorum(int[0,N] nodeIndex, const bool &amp;ballotValue[
 bool checkConfirmedCommit(const bool &amp;ballotValue[V], int[0,INFINITY] counterC, int[0,INFINITY] counterH) {
     int[0,N] cntQuorumTH = 0;
 
-    for (n : int[0,N-1]) {
-        if (qs[myID].validators[n] != N) {
-            if (N - n + cntQuorumTH &lt; qs[myID].threshold) {
+    SCPQuorumSet myQuorumSet = qs[myID];
+    int[0,N] validatorID;
+
+    for (id : int[0,N-1]) {
+        validatorID = myQuorumSet.validators[id];
+
+        if (validatorID != N) {
+            if (N - id + cntQuorumTH &lt; myQuorumSet.threshold) {
                 return false;
             }
 
-            if (checkConfirmedCommitQuorum(n, ballotValue, counterC, counterH)) {
+            if (checkConfirmedCommitQuorum(validatorID, ballotValue, counterC, counterH)) {
                 cntQuorumTH++;
             }
 
-            if (cntQuorumTH &gt;= qs[myID].threshold) {
+            if (cntQuorumTH &gt;= myQuorumSet.threshold) {
                 return true;
             }
         }
