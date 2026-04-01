@@ -1249,52 +1249,52 @@ bool attemptAcceptPrepare(SCPBallot &amp;acceptedBallot, SCPBallot &amp;newMessa
     return hasNewAcceptedPrepare;
 }
 
-bool checkConfirmedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candidate) {
+bool checkConfirmedPrepareQuorum(int[0,N] nodeID, const SCPBallot &amp;candidate) {
     int[0,N] cntQuorumTH = 0;
 
-    for (n : int[0,N-1]) {
-        if (N - n + cntQuorumTH &lt; qs[nodeIndex].threshold) {
+    SCPQuorumSet nodeQuorumSet = qs[nodeID];
+    int[0,N] validatorID;
+    SCPBallotState validatorBallotState;
+
+    for (id : int[0,N-1]) {
+        if (N - id + cntQuorumTH &lt; nodeQuorumSet.threshold) {
             return false;
         }
 
-        if (qs[nodeIndex].validators[n] != N) {
-            if ( /// Phase: SCPPrepare
-                ballotStates[
-                    qs[nodeIndex].validators[n]
-                ].curState == SCPPrepare
-            ) {
+        validatorID = nodeQuorumSet.validators[id];
+
+        if (validatorID != N) {
+            validatorBallotState = ballotStates[validatorID];
+
+            if (validatorBallotState.curState == SCPPrepare) { /// Phase: SCPPrepare
                 if (
                     ( // p
-                        ballotStates[qs[nodeIndex].validators[n]].p.counter != 0
-                        &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].p.value == candidate.value
-                            &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].p.counter &gt;= candidate.counter)
-                    ) 
+                        validatorBallotState.p.counter != 0
+                        &amp;&amp; (validatorBallotState.p.value == candidate.value
+                            &amp;&amp; validatorBallotState.p.counter &gt;= candidate.counter)
+                    )
                     || ( // pp
-                        ballotStates[qs[nodeIndex].validators[n]].pp.counter != 0
-                        &amp;&amp; (ballotStates[qs[nodeIndex].validators[n]].pp.value == candidate.value
-                            &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].pp.counter &gt;= candidate.counter)
+                        validatorBallotState.pp.counter != 0
+                        &amp;&amp; (validatorBallotState.pp.value == candidate.value
+                            &amp;&amp; validatorBallotState.pp.counter &gt;= candidate.counter)
                     )
                 ) {
                     cntQuorumTH++;
                 }
             }
-            else if ( /// Phase: SCPConfirm
-                ballotStates[
-                    qs[nodeIndex].validators[n]
-                ].curState == SCPConfirm
-            ) {
-                if (ballotStates[qs[nodeIndex].validators[n]].p.value == candidate.value
-                    &amp;&amp; ballotStates[qs[nodeIndex].validators[n]].p.counter &gt;= candidate.counter) {
+            else if (validatorBallotState.curState == SCPConfirm) { /// Phase: SCPConfirm
+                if (validatorBallotState.p.value == candidate.value
+                    &amp;&amp; validatorBallotState.p.counter &gt;= candidate.counter) {
                     cntQuorumTH++;
                 }
             }
             else { /// Phase: SCPExternalize
-                if (ballotStates[qs[nodeIndex].validators[n]].c.value == candidate.value) {
+                if (validatorBallotState.c.value == candidate.value) {
                     cntQuorumTH++;
                 }
             }
 
-            if (cntQuorumTH &gt;= qs[nodeIndex].threshold) {
+            if (cntQuorumTH &gt;= nodeQuorumSet.threshold) {
                 return true;
             }
         }
@@ -1306,17 +1306,22 @@ bool checkConfirmedPrepareQuorum(int[0,N] nodeIndex, const SCPBallot &amp;candid
 bool checkConfirmedPrepare(const SCPBallot &amp;candidate) {
     int[0,N] cntQuorumTH = 0;
 
-    for (n : int[0,N-1]) {
-        if (N - n + cntQuorumTH &lt; qs[myID].threshold) {
+    SCPQuorumSet myQuorumSet = qs[myID];
+    int[0,N] validatorID;
+
+    for (id : int[0,N-1]) {
+        if (N - id + cntQuorumTH &lt; myQuorumSet.threshold) {
             return false;
         }
 
-        if (qs[myID].validators[n] != N) {
-            if (checkConfirmedPrepareQuorum(n, candidate)) {
+        validatorID = myQuorumSet.validators[id];
+
+        if (validatorID != N) {
+            if (checkConfirmedPrepareQuorum(validatorID, candidate)) {
                 cntQuorumTH++;
             }
 
-            if (cntQuorumTH &gt;= qs[myID].threshold) {
+            if (cntQuorumTH &gt;= myQuorumSet.threshold) {
                 return true;
             }
         }
