@@ -1689,28 +1689,27 @@ bool attemptConfirmCommit(SCPBallot &amp;newMessageBallots[3], int[0,INFINITY] &
     int[0,N*3] nextBoundary = 0;
     bool isAgreed = false;
 
-    for (n : int[0,N-1]) {
-        if (qs[myID].validators[n] != N) {
-            if ( /// Phase: SCPPrepare
-                ballotStates[
-                    qs[myID].validators[n]
-                ].curState == SCPPrepare
-            ) {
+    SCPQuorumSet myQuorumSet = qs[myID];
+    int[0,N] validatorID;
+    SCPBallotState validatorBallotState;
+
+    for (id : int[0,N-1]) {
+        validatorID = myQuorumSet.validators[id];
+
+        if (validatorID != N) {
+            validatorBallotState = ballotStates[validatorID];
+
+            if (validatorBallotState.curState == SCPPrepare) { /// Phase: SCPPrepare
                 // do nothing
-            } else if ( /// Phase: SCPConfirm
-                ballotStates[
-                    qs[myID].validators[n]
-                ].curState == SCPConfirm
-                &amp;&amp; ballotStates[qs[myID].validators[n]].b.value == newMessageBallots[0].value
+            } else if (validatorBallotState.curState == SCPConfirm /// Phase: SCPConfirm
+                &amp;&amp; validatorBallotState.b.value == newMessageBallots[0].value
             ) {
-
-                curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].c.counter;
-                curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].h.counter;
+                curBoundaries[nextBoundary++] = validatorBallotState.c.counter;
+                curBoundaries[nextBoundary++] = validatorBallotState.h.counter;
             } else { /// Phase: SCPExternalize
-
-                if (ballotStates[qs[myID].validators[n]].c.value == newMessageBallots[0].value) {
-                    curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].c.counter;
-                    curBoundaries[nextBoundary++] = ballotStates[qs[myID].validators[n]].h.counter;
+                if (validatorBallotState.c.value == newMessageBallots[0].value) {
+                    curBoundaries[nextBoundary++] = validatorBallotState.c.counter;
+                    curBoundaries[nextBoundary++] = validatorBallotState.h.counter;
                     curBoundaries[nextBoundary++] = INFINITY;
                 }
             }
